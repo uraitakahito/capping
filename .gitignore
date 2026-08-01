@@ -1,0 +1,17 @@
+/node_modules/
+/dist/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# VSCode settings
+.vscode/extensions.json
+.vscode/launch.json
+.vscode/settings.json
+.vscode/tasks.json
+
+# OS / エディタ / ローカル副産物
+.DS_Store
+.idea/
+*.local
+*.log

@@ -1,0 +1,54 @@
+{
+  "name": "capping",
+  "version": "0.1.0",
+  "description": "Local wacz-auth signing stand-in — a private CA, an RFC 3161 timestamp authority, and a signer, all driven by openssl.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "capping": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix",
+    "site:dev": "npm --prefix docs-site run dev",
+    "site:build": "npm --prefix docs-site run build",
+    "site:preview": "npm --prefix docs-site run preview",
+    "site:check": "npm run site:build && node scripts/check-doc-refs.mjs",
+    "check": "npm run typecheck && npm run lint && npm test"
+  },
+  "keywords": [
+    "wacz",
+    "wacz-auth",
+    "signing",
+    "rfc3161",
+    "openssl",
+    "browserhive"
+  ],
+  "author": "Takahito Urai",
+  "license": "The Unlicense",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.0.0",
+    "eslint": "^10.2.0",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import-x": "^4.16.1",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.48.0",
+    "vitest": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

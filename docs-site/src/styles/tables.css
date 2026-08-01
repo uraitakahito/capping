@@ -1,0 +1,24 @@
+/* リファレンス表のセル内コード（CLI フラグなど）を折り返さない。
+   Starlight のテーブルは既定で `display: block; overflow: auto` なので、
+   1 行に収まらないときは表そのものが横スクロールする — 長いフラグ名が
+   セル内で 2 行に割れて読みにくくなるのを防ぐ。説明列のプレーンな文章は
+   従来どおり折り返す（対象は <code> トークンのみ）。 */
+.sl-markdown-content table code {
+  white-space: nowrap;
+}
+
+/* 環境変数ページ（案B）: 各行は「CLI フラグ ＋ その直下に環境変数」を縦積みし、
+   表を 2 列にして「型 / 形式」列を常に見えるようにする。環境変数は
+   <code class="env"> で表し、フラグに従属する控えめな行として小さく淡色で置く。
+   狭い画面では折り返せるよう nowrap を解除する（上の規則より specificity が高い）。 */
+.sl-markdown-content code.env {
+  display: block;
+  margin-top: 3px;
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-3);
+  background: none;
+  border: 0;
+  padding: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
