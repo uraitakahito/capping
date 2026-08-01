@@ -58,4 +58,4 @@ $ npm run site:build    # サイトをビルド
 $ npm run site:check    # ビルド + ドキュメント内の参照が全て解決することを検証
 ```
 
-保証が欲しいときは `site:build` ではなく `site:check` を使ってください。ビルド単体では強制されません。region が欠けていれば抽出器は例外を投げますが、Starlight の docs loader がそれを捕まえて `[ERROR] [starlight-docs-loader] Error rendering …` と記録し、そのまま終了コード 0 で完了します。非ゼロで落ちるのは `scripts/check-doc-refs.mjs` の方で、CI が走らせているのもこちらです。
+保証が欲しいときは `site:build` ではなく `site:check` を使ってください。ここではビルド単体は強制になりません。region が欠けていれば抽出器は例外を投げますが、それでビルドが止まるかはページの拡張子次第です。`.mdx` なら例外が vite 経由で表面化してビルドが落ちる一方、`.md` —— capping は全ページこちら —— では Starlight の docs loader が捕まえて `[ERROR] [starlight-docs-loader] Error rendering …` と記録し、そのまま終了コード 0 で完了します。非ゼロで落ちるのは `scripts/check-doc-refs.mjs` の方で、CI が走らせているのもこちらです。

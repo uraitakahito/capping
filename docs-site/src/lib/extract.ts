@@ -19,15 +19,20 @@ const ROOT = resolve(process.cwd(), "..");
 /**
  * The current text between `// #region <name>` and `// #endregion`.
  *
- * Throws when the region is gone. Note that this alone does not stop a build:
- * Starlight's docs loader catches a render error, logs
- * `[ERROR] [starlight-docs-loader] Error rendering …`, and carries on to emit
- * the page. Measured, not assumed — a build with a renamed region exits 0 and
- * reports "Complete!".
+ * Throws when the region is gone — but whether that stops the build depends on
+ * the page's extension, which is not obvious and was measured rather than
+ * assumed (Starlight 0.41.4 / Astro 7.1.x):
  *
- * So the guard that actually holds the line is scripts/check-doc-refs.mjs,
- * which exits non-zero. `npm run site:check` runs both; CI runs `site:check`,
- * never `site:build` alone, for exactly this reason.
+ *   .mdx — the throw surfaces through @astrojs/mdx's vite plugin and the
+ *          build fails, exit 1.
+ *   .md  — Starlight's docs loader catches it, logs
+ *          `[ERROR] [starlight-docs-loader] Error rendering …`, and the build
+ *          finishes with exit 0 and "Complete!".
+ *
+ * Every page in capping is .md, so here the build is not a guard at all. The
+ * one that holds the line is scripts/check-doc-refs.mjs, which exits non-zero
+ * for both kinds. `npm run site:check` runs both; CI runs `site:check`, never
+ * `site:build` alone, for exactly this reason.
  *
  * The name must run to the end of its line. `\b` is not enough: a word
  * boundary sits between `e` and `-`, so a region named `timestamp-stage` would

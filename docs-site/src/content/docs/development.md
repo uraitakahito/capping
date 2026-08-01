@@ -58,4 +58,4 @@ $ npm run site:build    # build the site
 $ npm run site:check    # build + verify every doc reference resolves
 ```
 
-Use `site:check`, not `site:build`, when you want the guarantee. The build alone does not enforce it: the extractor throws on a missing region, but Starlight's docs loader catches that, logs `[ERROR] [starlight-docs-loader] Error rendering …`, and still exits 0. `scripts/check-doc-refs.mjs` is the part that exits non-zero, and it is what CI runs.
+Use `site:check`, not `site:build`, when you want the guarantee. The build alone does not enforce it here. The extractor throws on a missing region, but whether that stops the build depends on the page's extension: on `.mdx` the throw surfaces through vite and the build fails, while on `.md` — which is every page in capping — Starlight's docs loader catches it, logs `[ERROR] [starlight-docs-loader] Error rendering …`, and still exits 0. `scripts/check-doc-refs.mjs` is the part that exits non-zero, and it is what CI runs.

@@ -4,13 +4,19 @@ name: site
 # cannot merge documentation that points at renamed or deleted code.
 #
 # This runs `site:check` — build AND scripts/check-doc-refs.mjs — never
-# `site:build` alone. The build is not a guard on its own: `astro build`
-# injects `// #region` snippets via docs-site/src/lib/extract.ts, and when a
-# region is missing that extractor throws, but Starlight's docs loader catches
-# the error, logs it, and finishes with exit 0. Measured, not assumed.
-# check-doc-refs.mjs is the part that exits non-zero, and it also catches what
-# the build never sees: a `src/….ts` path written in prose that no longer
-# exists.
+# `site:build` alone.
+#
+# The build is not a guard here. `astro build` injects `// #region` snippets
+# via docs-site/src/lib/extract.ts, and a missing region makes that extractor
+# throw — but whether the build then fails depends on the page's extension.
+# On .mdx the throw surfaces through vite and the build exits 1; on .md
+# Starlight's docs loader catches it, logs `[ERROR] [starlight-docs-loader]
+# Error rendering …`, and exits 0. Every page in capping is .md. Measured,
+# not assumed.
+#
+# check-doc-refs.mjs is the part that exits non-zero for both kinds, and it
+# also catches what the build never sees: a `src/….ts` path written in prose
+# that no longer exists.
 #
 # This matters more here than in a typical package. capping's pages document
 # which openssl arguments it passes, and a page showing a stale argument list
