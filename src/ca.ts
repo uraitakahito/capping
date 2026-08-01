@@ -66,8 +66,6 @@ const paths = (dir: string) => ({
   tsaCsr: resolve(dir, "tsa.csr"),
   tsaCert: resolve(dir, "tsa.crt"),
   tsaExt: resolve(dir, "tsa.ext"),
-  tsaConf: resolve(dir, "tsa.cnf"),
-  tsaSerial: resolve(dir, "tsa.serial"),
 });
 
 export type CappingPaths = ReturnType<typeof paths>;
@@ -76,17 +74,24 @@ export const identityPaths = paths;
 /**
  * The TSA section openssl needs to act as a timestamp authority.
  *
+ * Built at signing time rather than stored in the identity directory, and that
+ * is not a detail. `ts -reply` reads this config with whatever cwd the caller
+ * has, so every path inside it has to be absolute — which means a config
+ * written once at `init` freezes the identity to the machine that made it.
+ * Committing such a directory and mounting it somewhere else produces an
+ * openssl error about files that are not there.
+ *
+ * Generating it per call keeps the identity directory relocatable and
+ * read-only: nothing in it refers to where it lives.
+ *
  * `digests` looks optional and is not: without it every `ts -reply` stops with
  * "cannot find config variable". `accuracy` and `ess_cert_id_chain` genuinely
  * are optional — they warn and carry on.
  */
-const tsaConfig = (p: CappingPaths): string =>
+export const buildTsaConfig = (p: CappingPaths, serialPath: string): string =>
   [
     "[ tsa_config ]",
-    // Absolute, for the same reason the rest are: openssl reads this file with
-    // the identity directory as its cwd, so a relative path here would be
-    // resolved against that directory a second time.
-    `serial = ${p.tsaSerial}`,
+    `serial = ${serialPath}`,
     `signer_cert = ${p.tsaCert}`,
     `certs = ${p.tsaCaCert}`,
     `signer_key = ${p.tsaKey}`,
@@ -154,8 +159,9 @@ export async function initIdentity(options: InitOptions): Promise<Identity> {
     "-out", p.tsaCert, "-days", String(caDays), "-extfile", p.tsaExt,
   );
 
-  await writeFile(p.tsaConf, tsaConfig(p), "utf8");
-  await writeFile(p.tsaSerial, "01\n", "utf8");
+  // No tsa.cnf and no tsa.serial here. Both are derived per signature (see
+  // `sign`), which is what lets this directory be committed, mounted read-only,
+  // and used from a different path than the one it was created at.
 
   return {
     dir,
