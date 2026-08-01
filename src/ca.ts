@@ -13,7 +13,7 @@
  * state to develop in, and it is exactly what py-wacz's "invalid" fixture is.
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { resolve } from "node:path";
 
 import { Openssl, withTempDir } from "./openssl.js";
 
@@ -44,21 +44,28 @@ export interface Identity {
   tsaRootCert: string;
 }
 
+/**
+ * Absolute paths for everything in an identity directory.
+ *
+ * `resolve` rather than `join`, because openssl runs with the identity
+ * directory as its cwd. A relative `dir` would then be applied twice —
+ * `capping init --dir ./id` looked for `./id/./id/ca.key` and failed with
+ * openssl's own "Can't open ... for writing", which reads like a permissions
+ * problem rather than a path one.
+ */
 const paths = (dir: string) => ({
-  caKey: join(dir, "ca.key"),
-  caCert: join(dir, "ca.crt"),
-  signerKey: join(dir, "signer.key"),
-  signerCsr: join(dir, "signer.csr"),
-  signerCert: join(dir, "signer.crt"),
-  signerExt: join(dir, "signer.ext"),
-  tsaCaKey: join(dir, "tsa-ca.key"),
-  tsaCaCert: join(dir, "tsa-ca.crt"),
-  tsaKey: join(dir, "tsa.key"),
-  tsaCsr: join(dir, "tsa.csr"),
-  tsaCert: join(dir, "tsa.crt"),
-  tsaExt: join(dir, "tsa.ext"),
-  tsaConf: join(dir, "tsa.cnf"),
-  tsaSerial: join(dir, "tsa.serial"),
+  caKey: resolve(dir, "ca.key"),
+  caCert: resolve(dir, "ca.crt"),
+  signerKey: resolve(dir, "signer.key"),
+  signerCsr: resolve(dir, "signer.csr"),
+  signerCert: resolve(dir, "signer.crt"),
+  signerExt: resolve(dir, "signer.ext"),
+  tsaCaKey: resolve(dir, "tsa-ca.key"),
+  tsaCaCert: resolve(dir, "tsa-ca.crt"),
+  tsaKey: resolve(dir, "tsa.key"),
+  tsaCsr: resolve(dir, "tsa.csr"),
+  tsaCert: resolve(dir, "tsa.crt"),
+  tsaExt: resolve(dir, "tsa.ext"),
 });
 
 export type CappingPaths = ReturnType<typeof paths>;
@@ -67,17 +74,27 @@ export const identityPaths = paths;
 /**
  * The TSA section openssl needs to act as a timestamp authority.
  *
+ * Built at signing time rather than stored in the identity directory, and that
+ * is not a detail. `ts -reply` reads this config with whatever cwd the caller
+ * has, so every path inside it has to be absolute — which means a config
+ * written once at `init` freezes the identity to the machine that made it.
+ * Committing such a directory and mounting it somewhere else produces an
+ * openssl error about files that are not there.
+ *
+ * Generating it per call keeps the identity directory relocatable and
+ * read-only: nothing in it refers to where it lives.
+ *
  * `digests` looks optional and is not: without it every `ts -reply` stops with
  * "cannot find config variable". `accuracy` and `ess_cert_id_chain` genuinely
  * are optional — they warn and carry on.
  */
-const tsaConfig = (dir: string): string =>
+export const buildTsaConfig = (p: CappingPaths, serialPath: string): string =>
   [
     "[ tsa_config ]",
-    `serial = ${join(dir, "tsa.serial")}`,
-    `signer_cert = ${join(dir, "tsa.crt")}`,
-    `certs = ${join(dir, "tsa-ca.crt")}`,
-    `signer_key = ${join(dir, "tsa.key")}`,
+    `serial = ${serialPath}`,
+    `signer_cert = ${p.tsaCert}`,
+    `certs = ${p.tsaCaCert}`,
+    `signer_key = ${p.tsaKey}`,
     "signer_digest = sha256",
     "default_policy = 1.3.6.1.4.1.99999.1",
     "granularity = 1",
@@ -142,8 +159,9 @@ export async function initIdentity(options: InitOptions): Promise<Identity> {
     "-out", p.tsaCert, "-days", String(caDays), "-extfile", p.tsaExt,
   );
 
-  await writeFile(p.tsaConf, tsaConfig(dir), "utf8");
-  await writeFile(p.tsaSerial, "01\n", "utf8");
+  // No tsa.cnf and no tsa.serial here. Both are derived per signature (see
+  // `sign`), which is what lets this directory be committed, mounted read-only,
+  // and used from a different path than the one it was created at.
 
   return {
     dir,

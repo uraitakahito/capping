@@ -9,12 +9,12 @@
  * The failure cases are the reason capping issues its own certificates. None of
  * them can be arranged against a public CA or a public timestamp authority.
  */
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { initIdentity, type Identity } from "../src/ca.js";
+import { initIdentity, loadIdentity, type Identity } from "../src/ca.js";
 import { hashFile, sign, toDatapackageDigest } from "../src/sign.js";
 import { parseDatapackageDigest } from "../src/signed-data.js";
 import { timestampTime, verifySignedData } from "../src/verify.js";
@@ -161,4 +161,28 @@ describe("hashFile", () => {
 
     expect(await hashFile(path)).toMatch(/^sha256:[0-9a-f]{64}$/);
   }, 30_000);
+});
+
+describe("an identity directory that was moved", () => {
+  it("still signs, because nothing in it records where it lives", async () => {
+    // The reason this matters: a development CA is most useful when it can be
+    // committed and mounted somewhere else — a fixture directory in one repo,
+    // /id inside a container. An identity that baked absolute paths at init
+    // time works exactly once, on the machine that made it, and then fails
+    // with openssl complaining about files that are not there.
+    const made = join(dir, "portable-a");
+    await initIdentity({ dir: made, domain: "sign.dev.local" });
+
+    const moved = join(dir, "portable-b");
+    await rename(made, moved);
+
+    const identity = await loadIdentity(moved);
+    const signedData = await sign(identity, { hash: HASH });
+    const report = await verifySignedData(signedData, { trustRoots: [identity.rootCert] });
+
+    // The timestamp stage is the one that would break: it is the only step
+    // that reads a config file full of paths.
+    expect(report.stages.timestamp.status).toBe("ok");
+    expect(report.valid).toBe(true);
+  }, 120_000);
 });

@@ -16,7 +16,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { identityPaths, type Identity } from "./ca.js";
+import { buildTsaConfig, identityPaths, type Identity } from "./ca.js";
 import { Openssl, withTempDir, writeExact } from "./openssl.js";
 import type { SignedData } from "./signed-data.js";
 
@@ -55,9 +55,22 @@ export async function sign(identity: Identity, options: SignOptions): Promise<Si
     await writeExact(b64Path, signature);
     await openssl.run("ts", "-query", "-data", b64Path, "-sha256", "-cert", "-out", join(work, "ts.tsq"));
     // #endregion sign-steps
+    // The TSA config and its serial live here, in the temp directory, not in
+    // the identity. Both would otherwise pin the identity to one absolute path
+    // and require it to be writable — and a development CA is most useful when
+    // it can be committed, mounted read-only, and used from anywhere.
+    //
+    // The serial therefore restarts at 01 for every signature. A real TSA must
+    // not repeat serials; this one is a stand-in whose tokens are checked by
+    // `openssl ts -verify`, which does not care.
+    const serialPath = join(work, "tsa.serial");
+    const confPath = join(work, "tsa.cnf");
+    await writeFile(serialPath, "01\n", "utf8");
+    await writeFile(confPath, buildTsaConfig(p, serialPath), "utf8");
+
     await openssl.run(
       "ts", "-reply",
-      "-config", p.tsaConf, "-section", "tsa_config",
+      "-config", confPath, "-section", "tsa_config",
       "-queryfile", join(work, "ts.tsq"),
       "-out", join(work, "ts.tsr"),
     );

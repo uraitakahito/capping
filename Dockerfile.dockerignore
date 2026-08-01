@@ -1,0 +1,10 @@
+# Build context whitelist. Everything is excluded, then the few paths the
+# Dockerfile actually COPYs are allowed back in. A denylist would quietly start
+# shipping whatever gets added to the repo next.
+*
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!tsconfig.json
+!tsconfig.build.json
+!src
