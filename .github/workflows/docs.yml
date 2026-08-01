@@ -1,0 +1,57 @@
+name: docs
+
+# Publish docs-site/ to GitHub Pages.
+#
+# Only on main. Pull requests get the read-only sync guard in site.yml instead —
+# building a fork's branch here would let it choose what gets served.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'docs-site/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time. Not cancel-in-progress: a half-finished deploy of
+# something published is worse than waiting.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+
+      - name: Install docs-site dependencies
+        run: npm ci --prefix docs-site
+
+      - name: Build Astro site
+        run: npm run site:build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs-site/dist
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

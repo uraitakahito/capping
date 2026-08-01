@@ -1,0 +1,77 @@
+name: site
+
+# Sync guard for the docs in docs-site/ (Astro/Starlight), so a pull request
+# cannot merge documentation that points at renamed or deleted code.
+#
+# This runs `site:check` — build AND scripts/check-doc-refs.mjs — never
+# `site:build` alone.
+#
+# The build is not a guard here. `astro build` injects `// #region` snippets
+# via docs-site/src/lib/extract.ts, and a missing region makes that extractor
+# throw — but whether the build then fails depends on the page's extension.
+# On .mdx the throw surfaces through vite and the build exits 1; on .md
+# Starlight's docs loader catches it, logs `[ERROR] [starlight-docs-loader]
+# Error rendering …`, and exits 0. Every page in capping is .md. Measured,
+# not assumed.
+#
+# check-doc-refs.mjs is the part that exits non-zero for both kinds, and it
+# also catches what the build never sees: a `src/….ts` path written in prose
+# that no longer exists.
+#
+# This matters more here than in a typical package. capping's pages document
+# which openssl arguments it passes, and a page showing a stale argument list
+# would be describing a different program.
+#
+# Security notes:
+#   - This is a read-only CHECK. It never deploys and references no secrets;
+#     permissions are contents:read only. Unlike docs.yml (which publishes to
+#     Pages and therefore only runs on main), running on pull_request is safe
+#     here — there is no publish step, so a fork's PR cannot alter what is
+#     served.
+#   - Only docs-site/ dependencies are installed; the root install is not
+#     needed to build the docs.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'docs-site/**'
+      - 'scripts/check-doc-refs.mjs'
+      - 'package.json'
+      - '.github/workflows/site.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'docs-site/**'
+      - 'scripts/check-doc-refs.mjs'
+      - 'package.json'
+      - '.github/workflows/site.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Docs sync guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+
+      - name: Install docs-site dependencies
+        run: npm ci --prefix docs-site
+
+      - name: Build site and verify doc references
+        run: npm run site:check

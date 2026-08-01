@@ -1,0 +1,74 @@
+{
+  "compilerOptions": {
+    /*
+     * Type Checking
+     * https://www.typescriptlang.org/tsconfig/#Type_Checking_6248
+     */
+    // Enable all strict type-checking options
+    "strict": true,
+    // Report errors on unused local variables
+    "noUnusedLocals": true,
+    // Report errors on unused parameters in functions
+    "noUnusedParameters": true,
+    // Differentiate between undefined and not present when type checking
+    "exactOptionalPropertyTypes": true,
+    // Report error when not all code paths in function return a value
+    "noImplicitReturns": true,
+    // Report errors for fallthrough cases in switch statements
+    "noFallthroughCasesInSwitch": true,
+    // Add undefined to any un-declared field in the type
+    "noUncheckedIndexedAccess": true,
+    // Ensure overriding members in derived classes are marked with an override modifier
+    "noImplicitOverride": true,
+    // Require the bracket notation for accessing properties with index signatures
+    "noPropertyAccessFromIndexSignature": true,
+
+    /*
+     * Modules
+     * https://www.typescriptlang.org/tsconfig/#Modules_6244
+     *
+     * NodeNext (rather than BrowserHive's `ESNext` + `moduleResolution: Bundler`)
+     * because meadow is a Node service run directly via `node dist/serve.js`,
+     * not through a bundler — same choice waggle makes.
+     */
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    // Allow `import` of `.json` files
+    "resolveJsonModule": true,
+
+    /*
+     * Emit
+     * https://www.typescriptlang.org/tsconfig/#Emit_6246
+     */
+    // Generate .d.ts files so library consumers (import { buildFixture }) get types
+    "declaration": true,
+    // Create sourcemaps for d.ts files
+    "declarationMap": true,
+    // Create source map files for emitted JavaScript files
+    "sourceMap": true,
+    // Specify an output folder for all emitted files
+    "outDir": "./dist",
+    // Disable emitting files if any type checking errors are reported
+    "noEmitOnError": true,
+
+    /*
+     * Interop Constraints
+     * https://www.typescriptlang.org/tsconfig/#Interop_Constraints_6252
+     */
+    // Emit additional JavaScript to ease support for importing CommonJS modules
+    "esModuleInterop": true,
+    // Ensure that casing is correct in imports
+    "forceConsistentCasingInFileNames": true,
+    // Skip type checking of declaration files from node_modules
+    "skipLibCheck": true,
+
+    /*
+     * Language and Environment
+     * https://www.typescriptlang.org/tsconfig/#Language_and_Environment_6254
+     */
+    // Set the JavaScript language version for emitted JavaScript
+    "target": "ES2023"
+  },
+  // typecheck + eslint see both src and test; tsconfig.build.json narrows emit to src.
+  "include": ["src/**/*", "test/**/*"]
+}

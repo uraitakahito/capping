@@ -1,0 +1,49 @@
+name: ci
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # capping does no cryptography of its own, so openssl decides every
+      # result here. Its version is the one thing that can change the answers
+      # without a commit, which makes it the first thing to check when a test
+      # starts failing for no visible reason. Recorded before anything runs.
+      - name: Record the openssl in use
+        run: |
+          openssl version -a
+          command -v openssl
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      # Builds before testing rather than after: test/cli.test.ts spawns
+      # dist/cli.js, which is what `bin` points at. Testing the source instead
+      # would leave the shipped entry point unexercised.
+      - name: Build
+        run: npm run build
+
+      - name: Tests
+        run: npm test

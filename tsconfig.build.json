@@ -1,0 +1,7 @@
+{
+  // Build config: emit only the shipped sources to dist/. Test files are still
+  // type-checked (via tsconfig.json + `npm run typecheck`) but never emitted.
+  "extends": "./tsconfig.json",
+  "include": ["src/**/*"],
+  "exclude": ["test/**/*"]
+}

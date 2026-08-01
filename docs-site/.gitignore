@@ -1,0 +1,20 @@
+# 依存(npm ci で再現するので追跡しない)
+node_modules/
+
+# ビルド成果物(_astro/・検索インデックス pagefind/ を含む)
+dist/
+
+# Astro が生成する型・キャッシュ
+.astro/
+
+# 環境変数(秘匿・ローカル上書き)
+.env
+.env.production
+*.local
+
+# ログ
+*-debug.log*
+
+# OS / エディタ
+.DS_Store
+.idea/
