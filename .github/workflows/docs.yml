@@ -36,6 +36,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The root is a pnpm project, docs-site/ is an npm one. pnpm is here only
+      # to run the root's `site:check` script; the cache is keyed on docs-site's
+      # lockfile because that is the only install this job performs.
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -45,8 +50,13 @@ jobs:
       - name: Install docs-site dependencies
         run: npm ci --prefix docs-site
 
-      - name: Build Astro site
-        run: npm run site:build
+      # site:check rather than site:build. Every page here is .md, and on .md a
+      # missing `// #region` only makes Starlight's loader log an error — the
+      # build still exits 0, so deploying on a bare build would publish a page
+      # whose snippet failed to inject. check-doc-refs.mjs is what exits
+      # non-zero, and it needs no dependencies.
+      - name: Build and verify
+        run: pnpm run site:check
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

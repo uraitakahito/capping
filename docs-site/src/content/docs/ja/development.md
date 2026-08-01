@@ -4,11 +4,13 @@ description: テストの順序と、その順序こそが要点である理由�
 ---
 
 ```console
-$ npm install
-$ npm run check   # typecheck・lint・test
+$ pnpm install
+$ pnpm run check   # typecheck・lint・test
 ```
 
-必要なのは Node 24 と `PATH` 上の `openssl` です。実行時依存はありません。
+必要なのは Node 24・pnpm・`PATH` 上の `openssl` です。実行時依存はありません —— `package.json` に並んでいるものはすべて devDependencies で、実行時に要るのは openssl 1 つだけです。
+
+`docs-site/` は独自の lockfile を持つ別の npm プロジェクトなので、`npm ci --prefix docs-site` で入れます。下の `site:*` スクリプトが中に入って実行してくれます。
 
 ## テストの順序
 
@@ -54,8 +56,8 @@ capping は暗号処理を自前で持たないので、openssl は**コミッ�
 `docs-site/` 配下のページは、`// #region` マーカー経由でビルド時に `src/` からコードを取り込みます。したがって断片が実物から乖離することはありません。
 
 ```console
-$ npm run site:build    # サイトをビルド
-$ npm run site:check    # ビルド + ドキュメント内の参照が全て解決することを検証
+$ pnpm run site:build    # サイトをビルド
+$ pnpm run site:check    # ビルド + ドキュメント内の参照が全て解決することを検証
 ```
 
 保証が欲しいときは `site:build` ではなく `site:check` を使ってください。ここではビルド単体は強制になりません。region が欠けていれば抽出器は例外を投げますが、それでビルドが止まるかはページの拡張子次第です。`.mdx` なら例外が vite 経由で表面化してビルドが落ちる一方、`.md` —— capping は全ページこちら —— では Starlight の docs loader が捕まえて `[ERROR] [starlight-docs-loader] Error rendering …` と記録し、そのまま終了コード 0 で完了します。非ゼロで落ちるのは `scripts/check-doc-refs.mjs` の方で、CI が走らせているのもこちらです。
