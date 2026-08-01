@@ -45,7 +45,7 @@ let digest: string;
 let caCert: string;
 
 beforeAll(async () => {
-  await execFileAsync("npm", ["run", "build"], { cwd: root });
+  await execFileAsync("pnpm", ["run", "build"], { cwd: root });
 
   dir = await mkdtemp(join(tmpdir(), "capping-cli-"));
   caCert = join(dir, "id", "ca.crt");
