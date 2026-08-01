@@ -1,4 +1,8 @@
 {
+  "//": [
+    "Discussion on how to write comments in package.json:",
+    "https://stackoverflow.com/questions/14221579/how-do-i-add-comments-to-package-json-for-npm-install"
+  ],
   "name": "capping",
   "version": "0.1.0",
   "description": "Local wacz-auth signing stand-in — a private CA, an RFC 3161 timestamp authority, and a signer, all driven by openssl.",
@@ -9,12 +13,31 @@
       "import": "./dist/index.js"
     }
   },
+  "//bin": "The CLI. Points at dist/, so `pnpm run build` has to have run — test/cli.test.ts builds first for exactly this reason.",
   "bin": {
     "capping": "./dist/cli.js"
   },
+  "//files": [
+    "dist/ only. LICENSE, package.json and README.md are included automatically.",
+    "NOTICE is not, and does not need to be: the MIT-licensed fixtures it covers live",
+    "in test/fixtures/, which is not published either — so no py-wacz material ships."
+  ],
   "files": [
     "dist"
   ],
+  "//scripts": {
+    "build": "Compile src/ to dist/ via tsconfig.build.json (which excludes test/). dist/cli.js is what `bin` points at, so this is what ships — test/cli.test.ts spawns it rather than importing the source, and would otherwise measure whatever dist/ happened to hold.",
+    "typecheck": "Type-check everything including test/, without emitting. Separate from `build` because the build deliberately narrows to src/.",
+    "test": "Vitest, single run. Ordered deliberately: verify-real-fixtures runs the verifier against py-wacz's signed archives BEFORE anything here produces a signature, so a round trip that agreed with itself about the wrong format could not pass unnoticed.",
+    "test:watch": "Vitest in watch mode.",
+    "lint": "ESLint with zero tolerance for warnings. --max-warnings 0 so a warning cannot accumulate into background noise.",
+    "lint:fix": "ESLint with --fix.",
+    "site:dev": "Astro dev server for docs-site/. npm, not pnpm: docs-site is a separate npm project with its own lockfile (same split as BrowserHive).",
+    "site:build": "Build docs-site/ to docs-site/dist/. NOT a drift guard on its own — see site:check.",
+    "site:preview": "Serve the built docs-site/dist/ locally.",
+    "site:check": "site:build plus scripts/check-doc-refs.mjs. Use this, not site:build, when you want the guarantee: a missing `// #region` only fails the build on .mdx pages, and every page here is .md, where Starlight's loader catches the error and still exits 0. check-doc-refs.mjs is the part that exits non-zero. CI runs this.",
+    "check": "typecheck + lint + test. What CI runs, and what to run before pushing."
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -38,6 +61,16 @@
   ],
   "author": "Takahito Urai",
   "license": "The Unlicense",
+  "//devDependencies": {
+    "@eslint/js": "ESLint's own recommended rule set, consumed by eslint.config.mjs.",
+    "@types/node": "Node type definitions. capping is Node-only — there is no browser code here.",
+    "eslint": "Linter. Flat config in eslint.config.mjs, shared in shape with the sibling repositories.",
+    "eslint-import-resolver-typescript": "Lets import-x resolve TypeScript path/extension conventions — notably the .js specifiers that ESM TypeScript writes for .ts files.",
+    "eslint-plugin-import-x": "Import hygiene: enforces the .js extension on relative imports, which Node's ESM resolver requires at runtime. Pulls in unrs-resolver, whose native build must be allowed in pnpm-workspace.yaml.",
+    "typescript": "The compiler. Also the type gate: `typecheck` covers test/, `build` narrows to src/.",
+    "typescript-eslint": "The typescript-eslint preset bundle (parser + plugin + configs). eslint.config.mjs turns on strictTypeChecked and stylisticTypeChecked from it, which is why linting needs a tsconfig and is slower than a syntax-only pass.",
+    "vitest": "Test runner. Pulls in esbuild, whose platform binary is installed by a postinstall — allowed explicitly in pnpm-workspace.yaml, since pnpm 11 runs no dependency lifecycle scripts by default."
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.0.0",
@@ -48,7 +81,18 @@
     "typescript-eslint": "^8.48.0",
     "vitest": "^3.2.0"
   },
+  "//dependencies": [
+    "There are none, and that is the design.",
+    "capping does no cryptography of its own: key generation, certificates, digests,",
+    "signatures and RFC 3161 are all openssl invocations, and this package supplies",
+    "the JSON, the temp files and the process handling around them.",
+    "So the only thing it needs at run time is the openssl CLI, which comes from the",
+    "system (or apt, in the Dockerfile — node:24-bookworm-slim does not ship it).",
+    "Everything above is a devDependency."
+  ],
+  "//packageManager": "Read by pnpm/action-setup@v4 in CI, so the version there matches this one without being repeated in the workflow. See pnpm-workspace.yaml for the two places pnpm departs from npm silently (allowBuilds, enablePrePostScripts).",
   "packageManager": "pnpm@11.4.0",
+  "//engines": "Node 24 for the ESM and type-stripping era the sibling repositories target. .nvmrc carries the same number for CI.",
   "engines": {
     "node": ">=24"
   }
