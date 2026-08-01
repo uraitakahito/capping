@@ -4,11 +4,13 @@ description: How the test suite is ordered, and why the ordering is the point.
 ---
 
 ```console
-$ npm install
-$ npm run check   # typecheck, lint, test
+$ pnpm install
+$ pnpm run check   # typecheck, lint, test
 ```
 
-Node 24 and `openssl` on `PATH`. There are no runtime dependencies to install.
+Node 24, pnpm, and `openssl` on `PATH`. There are no runtime dependencies to install — everything in `package.json` is a dev dependency, and openssl is the only thing capping needs at run time.
+
+`docs-site/` is a separate npm project with its own lockfile, so it is installed with `npm ci --prefix docs-site`. The `site:*` scripts below shell into it for you.
 
 ## The order of the test suite
 
@@ -54,8 +56,8 @@ capping does no cryptography of its own, which makes openssl the one external va
 The pages under `docs-site/` pull code out of `src/` at build time via `// #region` markers, so a snippet cannot drift from what it claims to show.
 
 ```console
-$ npm run site:build    # build the site
-$ npm run site:check    # build + verify every doc reference resolves
+$ pnpm run site:build    # build the site
+$ pnpm run site:check    # build + verify every doc reference resolves
 ```
 
 Use `site:check`, not `site:build`, when you want the guarantee. The build alone does not enforce it here. The extractor throws on a missing region, but whether that stops the build depends on the page's extension: on `.mdx` the throw surfaces through vite and the build fails, while on `.md` — which is every page in capping — Starlight's docs loader catches it, logs `[ERROR] [starlight-docs-loader] Error rendering …`, and still exits 0. `scripts/check-doc-refs.mjs` is the part that exits non-zero, and it is what CI runs.

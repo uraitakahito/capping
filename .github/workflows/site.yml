@@ -64,6 +64,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The root is a pnpm project, docs-site/ is an npm one (same split as
+      # BrowserHive). pnpm is here only to run the root's `site:check` script;
+      # the cache is keyed on docs-site's lockfile because that is the only
+      # install this job performs. `site:check` needs no root node_modules —
+      # it shells into docs-site and then runs check-doc-refs.mjs, which is
+      # plain Node with no dependencies.
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -74,4 +82,4 @@ jobs:
         run: npm ci --prefix docs-site
 
       - name: Build site and verify doc references
-        run: npm run site:check
+        run: pnpm run site:check
