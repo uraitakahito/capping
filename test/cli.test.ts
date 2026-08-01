@@ -12,6 +12,7 @@
  */
 import { execFile } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -153,4 +154,19 @@ describe("capping's argument handling", () => {
     expect(run.code).toBe(2);
     expect(run.stderr).toContain("--file is required");
   }, 30_000);
+});
+
+describe("capping's paths", () => {
+  it("accepts a relative --dir", async () => {
+    // openssl runs with the identity directory as its cwd, so a relative --dir
+    // used to be applied twice: `--dir ./id` looked for `./id/./id/ca.key`.
+    // openssl reported it as "Can't open ... for writing", which reads like a
+    // permissions problem, and every existing test passed absolute paths from
+    // mkdtemp so nothing caught it.
+    const run = await capping("init", "--dir", "./relative-id", "--domain", "sign.dev.local");
+    expect(run.code).toBe(0);
+    expect(existsSync(join(root, "relative-id", "ca.crt"))).toBe(true);
+
+    await rm(join(root, "relative-id"), { recursive: true, force: true });
+  }, 180_000);
 });
