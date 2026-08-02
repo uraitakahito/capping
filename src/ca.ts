@@ -53,19 +53,34 @@ export interface Identity {
  * openssl's own "Can't open ... for writing", which reads like a permissions
  * problem rather than a path one.
  */
+/**
+ * Every file says what it is in its own name.
+ *
+ * An identity capping issues is a throwaway: the CA reaches no trust store, the
+ * keys sign nothing anyone trusts, and the whole directory is meant to be
+ * committed, mounted read-only and shared. A file called `insecure-dev-signer.key` does not
+ * say any of that — it looks exactly like the one file you must never let out,
+ * so finding it in a repository or a log starts an incident that did not happen.
+ *
+ * `insecure-dev-` is verbose on purpose. It is the part a person reads first,
+ * and it answers the only question worth answering quickly: no, this one does
+ * not matter.
+ */
+const PREFIX = "insecure-dev-";
+
 const paths = (dir: string) => ({
-  caKey: resolve(dir, "ca.key"),
-  caCert: resolve(dir, "ca.crt"),
-  signerKey: resolve(dir, "signer.key"),
-  signerCsr: resolve(dir, "signer.csr"),
-  signerCert: resolve(dir, "signer.crt"),
-  signerExt: resolve(dir, "signer.ext"),
-  tsaCaKey: resolve(dir, "tsa-ca.key"),
-  tsaCaCert: resolve(dir, "tsa-ca.crt"),
-  tsaKey: resolve(dir, "tsa.key"),
-  tsaCsr: resolve(dir, "tsa.csr"),
-  tsaCert: resolve(dir, "tsa.crt"),
-  tsaExt: resolve(dir, "tsa.ext"),
+  caKey: resolve(dir, `${PREFIX}ca.key`),
+  caCert: resolve(dir, `${PREFIX}ca.crt`),
+  signerKey: resolve(dir, `${PREFIX}signer.key`),
+  signerCsr: resolve(dir, `${PREFIX}signer.csr`),
+  signerCert: resolve(dir, `${PREFIX}signer.crt`),
+  signerExt: resolve(dir, `${PREFIX}signer.ext`),
+  tsaCaKey: resolve(dir, `${PREFIX}tsa-ca.key`),
+  tsaCaCert: resolve(dir, `${PREFIX}tsa-ca.crt`),
+  tsaKey: resolve(dir, `${PREFIX}tsa.key`),
+  tsaCsr: resolve(dir, `${PREFIX}tsa.csr`),
+  tsaCert: resolve(dir, `${PREFIX}tsa.crt`),
+  tsaExt: resolve(dir, `${PREFIX}tsa.ext`),
 });
 
 export type CappingPaths = ReturnType<typeof paths>;

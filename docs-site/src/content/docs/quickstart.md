@@ -15,10 +15,12 @@ OpenSSL 3.6.3 9 Jun 2026 (Library: OpenSSL 3.6.3 9 Jun 2026)
 ```console
 $ capping init --dir ./id --domain sign.dev.local
 identity for sign.dev.local in ./id
-  signing certificate  ./id/signer.crt
-  trust root           ./id/ca.crt
-  timestamp authority  ./id/tsa.crt
+  signing certificate  ./id/insecure-dev-signer.crt
+  trust root           ./id/insecure-dev-ca.crt
+  timestamp authority  ./id/insecure-dev-tsa.crt
 ```
+
+The `insecure-dev-` in every filename is not decoration. These keys are **safe to leak**: the CA reaches no trust store, and the certificates sign nothing anyone trusts. Commit the identity directory, mount it read-only, hand it around. A file called `signer.key` says none of that, and someone who finds one in a repository or a log **starts responding to an incident that did not happen**.
 
 This creates two separate hierarchies: a CA that issues the signing certificate, and an unrelated CA that issues the timestamp authority's. Real deployments get their timestamps from a different party, and keeping the two apart here means a test cannot pass because one root happened to vouch for both.
 
@@ -55,7 +57,7 @@ The result is the file that belongs at the WACZ root:
 ## 3. Verify
 
 ```console
-$ capping verify --file datapackage-digest.json --root ./id/ca.crt
+$ capping verify --file datapackage-digest.json --root ./id/insecure-dev-ca.crt
   ok       signature  signature matches the hash under the certificate's key
   ok       chain      chain reaches a supplied trust root
   ok       domain     certificate is valid for sign.dev.local
@@ -73,7 +75,7 @@ Leave out `--root` and the chain stage reports `skipped` rather than `failed`. N
 ```console
 $ capping init --dir ./expired --domain sign.dev.local --signer-days 0
 $ capping sign --dir ./expired --hash sha256:3dd086a0… --out expired.json
-$ capping verify --file expired.json --root ./expired/ca.crt
+$ capping verify --file expired.json --root ./expired/insecure-dev-ca.crt
   ok       signature  signature matches the hash under the certificate's key
   FAILED   chain      error 10 at 0 depth lookup: certificate has expired
   ok       domain     certificate is valid for sign.dev.local
@@ -85,7 +87,7 @@ not valid
 `--signer-days 0` issues an identity that is already past its validity. This is not an exotic case: signing certificates are deliberately short-lived, so by the time anyone verifies an archive, expiry is the *normal* state. `--allow-expired` is what a verifier reaches for once the timestamp has shown the signature predates the expiry — which is the entire reason the timestamp is there.
 
 ```console
-$ capping verify --file expired.json --root ./expired/ca.crt --allow-expired
+$ capping verify --file expired.json --root ./expired/insecure-dev-ca.crt --allow-expired
   ok       chain      chain reaches a supplied trust root
 ```
 

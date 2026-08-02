@@ -51,7 +51,7 @@ beforeAll(async () => {
   await execFileAsync("pnpm", ["run", "build"], { cwd: root });
 
   dir = await mkdtemp(join(tmpdir(), "capping-cli-"));
-  caCert = join(dir, "id", "ca.crt");
+  caCert = join(dir, "id", "insecure-dev-ca.crt");
   digest = join(dir, "datapackage-digest.json");
 
   await capping("init", "--dir", join(dir, "id"), "--domain", "sign.dev.local");
@@ -97,7 +97,7 @@ describe("capping verify", () => {
     const other = join(dir, "other");
     await capping("init", "--dir", other, "--domain", "sign.dev.local");
 
-    const run = await capping("verify", "--file", digest, "--root", join(other, "ca.crt"));
+    const run = await capping("verify", "--file", digest, "--root", join(other, "insecure-dev-ca.crt"));
     expect(run.code).toBe(1);
     expect(run.stdout).toContain("not valid");
     expect(run.stdout).toMatch(/FAILED\s+chain/);
@@ -170,13 +170,13 @@ describe("capping's argument handling", () => {
 describe("capping's paths", () => {
   it("accepts a relative --dir", async () => {
     // openssl runs with the identity directory as its cwd, so a relative --dir
-    // used to be applied twice: `--dir ./id` looked for `./id/./id/ca.key`.
+    // used to be applied twice: `--dir ./id` looked for `./id/./id/insecure-dev-ca.key`.
     // openssl reported it as "Can't open ... for writing", which reads like a
     // permissions problem, and every existing test passed absolute paths from
     // mkdtemp so nothing caught it.
     const run = await capping("init", "--dir", "./relative-id", "--domain", "sign.dev.local");
     expect(run.code).toBe(0);
-    expect(existsSync(join(root, "relative-id", "ca.crt"))).toBe(true);
+    expect(existsSync(join(root, "relative-id", "insecure-dev-ca.crt"))).toBe(true);
 
     await rm(join(root, "relative-id"), { recursive: true, force: true });
   }, 180_000);
@@ -198,7 +198,7 @@ describe("argument parsing the hand-rolled version got wrong", () => {
     const run = await capping("init", `--dir=${target}`, "--domain=sign.dev.local");
 
     expect(run.code).toBe(0);
-    expect(existsSync(join(target, "ca.crt"))).toBe(true);
+    expect(existsSync(join(target, "insecure-dev-ca.crt"))).toBe(true);
   }, 180_000);
 
   it("refuses a flag it does not recognise", async () => {
@@ -213,7 +213,7 @@ describe("argument parsing the hand-rolled version got wrong", () => {
 
     expect(run.code).not.toBe(0);
     expect(run.stderr).toContain("singer-days");
-    expect(existsSync(join(dir, "typo", "ca.crt"))).toBe(false);
+    expect(existsSync(join(dir, "typo", "insecure-dev-ca.crt"))).toBe(false);
   }, 60_000);
 
   it("prints a version rather than the usage text", async () => {
