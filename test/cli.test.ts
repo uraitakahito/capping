@@ -19,6 +19,8 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { SOFTWARE } from "../src/version.js";
+
 const execFileAsync = promisify(execFile);
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -141,7 +143,12 @@ describe("capping's argument handling", () => {
   it("prints usage and exits 0 with no command", async () => {
     const run = await capping();
     expect(run.code).toBe(0);
-    expect(run.stdout).toContain("capping init");
+    // Every subcommand is listed. Asserting the set rather than one literal
+    // line: a command added without a description, or dropped by accident,
+    // fails here.
+    for (const name of ["init", "sign", "verify", "serve"]) {
+      expect(run.stdout).toContain(name);
+    }
   }, 30_000);
 
   it("exits 2 on an unknown command", async () => {
@@ -152,7 +159,11 @@ describe("capping's argument handling", () => {
   it("exits 2 when a required flag is missing", async () => {
     const run = await capping("verify");
     expect(run.code).toBe(2);
-    expect(run.stderr).toContain("--file is required");
+    // Names the option that is missing. The exact phrasing is commander's and
+    // not worth pinning; that it identifies `--file` is the part a reader
+    // needs.
+    expect(run.stderr).toContain("--file");
+    expect(run.stderr).toMatch(/required|not specified/i);
   }, 30_000);
 });
 
@@ -169,4 +180,76 @@ describe("capping's paths", () => {
 
     await rm(join(root, "relative-id"), { recursive: true, force: true });
   }, 180_000);
+});
+
+/**
+ * What the hand-rolled parser let through.
+ *
+ * Written before the switch to commander and watched fail, so the record shows
+ * what the change was for. Swapping one parser for another is not a
+ * user-visible improvement; these four are.
+ */
+describe("argument parsing the hand-rolled version got wrong", () => {
+  it("accepts --flag=value", async () => {
+    // The universally expected form. The old parser treated `--dir=/x` as a
+    // boolean flag literally named `dir=/x`, so `--dir` came out missing and
+    // the command exited 2 without creating anything.
+    const target = join(dir, "eq-form");
+    const run = await capping("init", `--dir=${target}`, "--domain=sign.dev.local");
+
+    expect(run.code).toBe(0);
+    expect(existsSync(join(target, "ca.crt"))).toBe(true);
+  }, 180_000);
+
+  it("refuses a flag it does not recognise", async () => {
+    // The one that matters. `--singer-days` is a plausible typo for
+    // `--signer-days`, and the old parser accepted it in silence — leaving
+    // --signer-days at its 90-day default, so an identity meant to be already
+    // expired came out valid and verified cleanly. Being able to make an
+    // expired identity is the main reason capping runs its own CA.
+    const run = await capping(
+      "init", "--dir", join(dir, "typo"), "--domain", "sign.dev.local", "--singer-days", "0",
+    );
+
+    expect(run.code).not.toBe(0);
+    expect(run.stderr).toContain("singer-days");
+    expect(existsSync(join(dir, "typo", "ca.crt"))).toBe(false);
+  }, 60_000);
+
+  it("prints a version rather than the usage text", async () => {
+    const run = await capping("--version");
+
+    expect(run.code).toBe(0);
+    expect(run.stdout.trim()).toMatch(/^\d+\.\d+\.\d+/);
+  }, 30_000);
+
+  it("prints the version package.json declares, not a stale copy of it", async () => {
+    // src/cli.ts holds the number as a literal, so that startup never depends
+    // on resolving a path relative to dist/ — which differs between `node
+    // dist/cli.js`, a global install and the container. The cost of that is a
+    // second place to forget, and it had already drifted once: the tags were at
+    // v0.2.1 while the literal still said 0.1.0. Nobody noticed because
+    // `--version` did not work yet.
+    const pkg: unknown = JSON.parse(
+      await readFile(new URL("../package.json", import.meta.url), "utf8"),
+    );
+    const declared = (pkg as { version: string }).version;
+
+    const run = await capping("--version");
+
+    expect(run.stdout.trim()).toBe(declared);
+    // And the copy that outlives the process: `software` is written into every
+    // signature, so a stale value there is baked into archives.
+    expect(SOFTWARE).toBe(`capping/${declared}`);
+  }, 30_000);
+
+  it("documents each subcommand's own options", async () => {
+    // The old usage was one fixed block covering every command at once, so
+    // `capping init --help` could not tell you what init takes.
+    const run = await capping("init", "--help");
+
+    expect(run.code).toBe(0);
+    expect(run.stdout).toContain("--signer-days");
+    expect(run.stdout).not.toContain("--allow-expired");
+  }, 30_000);
 });

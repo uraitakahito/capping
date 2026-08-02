@@ -5,7 +5,7 @@ description: openssl だけで動く、ローカルの wacz-auth 署名スタン
 
 capping は [wacz-auth](https://specs.webrecorder.net/wacz-auth/0.1.0/) 署名サービスのローカル代替です。自前の CA・署名用証明書・RFC 3161 タイムスタンプ局を発行し、WACZ の `datapackage-digest.json` に入る `signedData` を作ります。
 
-**暗号処理はすべて `openssl` の呼び出しです。** capping が受け持つのは JSON・一時ファイル・プロセス起動だけで、実行時依存は 1 つもありません。
+**暗号処理はすべて `openssl` の呼び出しです。** capping が受け持つのは JSON・一時ファイル・プロセス起動だけです。暗号処理を npm から持ってくることはありません。実行時依存はコマンドラインを解析する [commander](https://www.npmjs.com/package/commander) 1 つだけです。
 
 これは最小主義のための最小主義ではありません。結果を人が確かめられるようにするための設計です。どのコマンドにも `--explain` を付ければ、実際に叩いた openssl の行がそのまま印字されます。信用できない結果は、手で打ち直して再現できます。
 

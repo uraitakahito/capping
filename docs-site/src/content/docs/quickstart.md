@@ -41,7 +41,7 @@ The result is the file that belongs at the WACZ root:
   "signedData": {
     "hash": "sha256:128e81a6…",
     "created": "2026-08-01T13:59:39.504Z",
-    "software": "capping/0.1.0",
+    "software": "capping/0.3.0",
     "version": "0.1.0",
     "signature": "MEQCIGS0Ydsd…",
     "domain": "sign.dev.local",

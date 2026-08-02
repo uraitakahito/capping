@@ -16,6 +16,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { SOFTWARE } from "./version.js";
 import { buildTsaConfig, identityPaths, type Identity } from "./ca.js";
 import { Openssl, withTempDir, writeExact } from "./openssl.js";
 import type { SignedData } from "./signed-data.js";
@@ -88,7 +89,9 @@ export async function sign(identity: Identity, options: SignOptions): Promise<Si
     return {
       hash: options.hash,
       created: options.created ?? new Date().toISOString(),
-      software: options.software ?? "capping/0.1.0",
+      software: options.software ?? SOFTWARE,
+      // The wacz-auth spec version, which is not capping's — it moves when the
+      // spec does, not when this package does.
       version: "0.1.0",
       signature,
       domain: identity.domain,

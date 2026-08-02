@@ -7,10 +7,11 @@
  * archive.
  *
  * Built on `node:http` rather than Fastify, which the sibling repositories use.
- * The point of this package is that its only dependency is openssl, and that
- * claim is worth more than the routing conveniences would be for two endpoints.
- * It has no runtime dependencies at all, and this file is why it can stay that
- * way.
+ * The point of this package is that nothing it does cryptographically comes
+ * from npm, and that claim is worth more than the routing conveniences would be
+ * for two endpoints. The one npm dependency, commander, is imported by cli.ts
+ * alone — the server reaches for nothing outside the standard library, and this
+ * file is why it can stay that way.
  */
 import { timingSafeEqual } from "node:crypto";
 import { createServer as createHttpServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";

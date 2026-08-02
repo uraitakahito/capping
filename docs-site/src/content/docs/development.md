@@ -8,7 +8,7 @@ $ pnpm install
 $ pnpm run check   # typecheck, lint, test
 ```
 
-Node 24, pnpm, and `openssl` on `PATH`. There are no runtime dependencies to install — everything in `package.json` is a dev dependency, and openssl is the only thing capping needs at run time.
+Node 24, pnpm, and `openssl` on `PATH`. `package.json` lists one runtime dependency, commander, for parsing the command line; everything else in it is a dev dependency. Nothing cryptographic comes from npm, so openssl on `PATH` is the requirement that actually matters.
 
 `docs-site/` is a separate npm project with its own lockfile, so it is installed with `npm ci --prefix docs-site`. The `site:*` scripts below shell into it for you.
 
