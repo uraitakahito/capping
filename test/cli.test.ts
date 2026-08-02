@@ -221,6 +221,23 @@ describe("argument parsing the hand-rolled version got wrong", () => {
     expect(run.stdout.trim()).toMatch(/^\d+\.\d+\.\d+/);
   }, 30_000);
 
+  it("prints the version package.json declares, not a stale copy of it", async () => {
+    // src/cli.ts holds the number as a literal, so that startup never depends
+    // on resolving a path relative to dist/ — which differs between `node
+    // dist/cli.js`, a global install and the container. The cost of that is a
+    // second place to forget, and it had already drifted once: the tags were at
+    // v0.2.1 while the literal still said 0.1.0. Nobody noticed because
+    // `--version` did not work yet.
+    const pkg: unknown = JSON.parse(
+      await readFile(new URL("../package.json", import.meta.url), "utf8"),
+    );
+    const declared = (pkg as { version: string }).version;
+
+    const run = await capping("--version");
+
+    expect(run.stdout.trim()).toBe(declared);
+  }, 30_000);
+
   it("documents each subcommand's own options", async () => {
     // The old usage was one fixed block covering every command at once, so
     // `capping init --help` could not tell you what init takes.

@@ -26,14 +26,20 @@ import { parseDatapackageDigest, parseSignedData } from "./signed-data.js";
 import { verifySignedData, type VerifyReport } from "./verify.js";
 
 /**
- * Kept in step with package.json by hand.
+ * Kept in step with package.json and with the release tag, by hand.
  *
  * Reading package.json at runtime would mean resolving a path relative to
  * dist/, which differs between `node dist/cli.js`, a global install and the
  * container — three ways to fail at startup for a string nobody needs that
  * badly.
+ *
+ * The sibling repositories leave package.json at whatever it was and let the
+ * tags move on alone, because nothing reads the field. capping is the only one
+ * with a `--version`, so here the two are moved together: a `--version` that
+ * answers with a number no release ever carried is worse than not having one.
+ * `test/cli.test.ts` checks this against package.json.
  */
-const VERSION = "0.1.0";
+const VERSION = "0.3.0";
 
 interface GlobalOpts {
   explain?: boolean;
