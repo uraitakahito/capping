@@ -12,7 +12,7 @@
  * is three ways to fail at startup for a string nobody needs that badly.
  * `test/cli.test.ts` compares this against package.json instead.
  */
-export const VERSION = "0.3.0";
+export const VERSION = "0.4.0";
 
 /** The `software` field of a wacz-auth signedData. */
 export const SOFTWARE = `capping/${VERSION}`;
