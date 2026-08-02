@@ -19,6 +19,8 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { SOFTWARE } from "../src/version.js";
+
 const execFileAsync = promisify(execFile);
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -219,6 +221,26 @@ describe("argument parsing the hand-rolled version got wrong", () => {
 
     expect(run.code).toBe(0);
     expect(run.stdout.trim()).toMatch(/^\d+\.\d+\.\d+/);
+  }, 30_000);
+
+  it("prints the version package.json declares, not a stale copy of it", async () => {
+    // src/cli.ts holds the number as a literal, so that startup never depends
+    // on resolving a path relative to dist/ — which differs between `node
+    // dist/cli.js`, a global install and the container. The cost of that is a
+    // second place to forget, and it had already drifted once: the tags were at
+    // v0.2.1 while the literal still said 0.1.0. Nobody noticed because
+    // `--version` did not work yet.
+    const pkg: unknown = JSON.parse(
+      await readFile(new URL("../package.json", import.meta.url), "utf8"),
+    );
+    const declared = (pkg as { version: string }).version;
+
+    const run = await capping("--version");
+
+    expect(run.stdout.trim()).toBe(declared);
+    // And the copy that outlives the process: `software` is written into every
+    // signature, so a stale value there is baked into archives.
+    expect(SOFTWARE).toBe(`capping/${declared}`);
   }, 30_000);
 
   it("documents each subcommand's own options", async () => {

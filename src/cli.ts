@@ -24,16 +24,8 @@ import { listen } from "./server.js";
 import { hashFile, sign, toDatapackageDigest } from "./sign.js";
 import { parseDatapackageDigest, parseSignedData } from "./signed-data.js";
 import { verifySignedData, type VerifyReport } from "./verify.js";
+import { VERSION } from "./version.js";
 
-/**
- * Kept in step with package.json by hand.
- *
- * Reading package.json at runtime would mean resolving a path relative to
- * dist/, which differs between `node dist/cli.js`, a global install and the
- * container — three ways to fail at startup for a string nobody needs that
- * badly.
- */
-const VERSION = "0.1.0";
 
 interface GlobalOpts {
   explain?: boolean;
