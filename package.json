@@ -82,18 +82,23 @@
     "vitest": "^3.2.0"
   },
   "//dependencies": [
-    "There are none, and that is the design.",
+    "One, and it is not a cryptographic one.",
     "capping does no cryptography of its own: key generation, certificates, digests,",
     "signatures and RFC 3161 are all openssl invocations, and this package supplies",
-    "the JSON, the temp files and the process handling around them.",
-    "So the only thing it needs at run time is the openssl CLI, which comes from the",
-    "system (or apt, in the Dockerfile — node:24-bookworm-slim does not ship it).",
-    "Everything above is a devDependency."
+    "the JSON, the temp files and the process handling around them. So the thing it",
+    "really needs at run time is the openssl CLI, which comes from the system (or",
+    "apt, in the Dockerfile — node:24-bookworm-slim does not ship it).",
+    "commander parses the command line, and is imported by src/cli.ts alone. The",
+    "parser it replaced was hand-rolled and dropped unknown flags in silence, so a",
+    "mistyped --signer-days left an identity meant to be expired valid instead."
   ],
   "//packageManager": "Read by pnpm/action-setup@v4 in CI, so the version there matches this one without being repeated in the workflow. See pnpm-workspace.yaml for the two places pnpm departs from npm silently (allowBuilds, enablePrePostScripts).",
   "packageManager": "pnpm@11.4.0",
   "//engines": "Node 24 for the ESM and type-stripping era the sibling repositories target. .nvmrc carries the same number for CI.",
   "engines": {
     "node": ">=24"
+  },
+  "dependencies": {
+    "commander": "^15.0.0"
   }
 }

@@ -7,9 +7,17 @@
  * it runs. When a signature will not verify, being able to paste the exact
  * command into a shell is what separates a five-minute problem from an
  * afternoon of guessing which side is wrong.
+ *
+ * commander does the parsing. The parser this replaced was hand-rolled and let
+ * four things through: `--flag=value` did not work, unknown flags were ignored
+ * in silence, `--version` printed the usage text, and there was no per-command
+ * help. The silent one was the dangerous one — `--singer-days 0` left
+ * `--signer-days` at its 90-day default, so an identity meant to be already
+ * expired came out valid, and verifying it passed.
  */
 import { readFile, writeFile } from "node:fs/promises";
 import { argv, exit, stderr, stdout } from "node:process";
+import { Command, Option } from "commander";
 
 import { initIdentity, identityPaths, loadIdentity } from "./ca.js";
 import { listen } from "./server.js";
@@ -17,120 +25,108 @@ import { hashFile, sign, toDatapackageDigest } from "./sign.js";
 import { parseDatapackageDigest, parseSignedData } from "./signed-data.js";
 import { verifySignedData, type VerifyReport } from "./verify.js";
 
-const USAGE = `capping — local wacz-auth signing, driven by openssl
+/**
+ * Kept in step with package.json by hand.
+ *
+ * Reading package.json at runtime would mean resolving a path relative to
+ * dist/, which differs between `node dist/cli.js`, a global install and the
+ * container — three ways to fail at startup for a string nobody needs that
+ * badly.
+ */
+const VERSION = "0.1.0";
 
-  capping init   --dir <dir> --domain <host> [--signer-days N] [--ca-days N]
-  capping sign   --dir <dir> (--hash sha256:… | --file <path>) [--out <path>]
-  capping verify --file <path> [--root <pem>…] [--allow-expired]
-  capping serve  --dir <dir> [--port N] [--host H] [--token T]
-
-Options
-  --explain            print every openssl command before running it
-  --signer-days N      validity of the signing certificate; 0 or less makes an
-                       already-expired one, which is the case worth testing
-  --root <pem>         a PEM file to trust. Without one the chain stage is
-                       reported as skipped rather than failed
-  --allow-expired      accept an expired certificate. Signing certificates are
-                       short-lived by design, so this is the normal state by
-                       the time anyone verifies
-  --token T            bearer token required by POST /sign. Verification stays
-                       open, as it reveals nothing the archive does not
-
-Every step shells out to openssl; nothing here implements cryptography.`;
-
-interface Args {
-  command: string | undefined;
-  flags: Map<string, string[]>;
-  bools: Set<string>;
+interface GlobalOpts {
+  explain?: boolean;
 }
 
-const parseArgs = (raw: string[]): Args => {
-  const flags = new Map<string, string[]>();
-  const bools = new Set<string>();
-  let command: string | undefined;
+/** `--explain` is declared per command; this turns it into the library's hook. */
+const explainer = (opts: GlobalOpts): ((cmd: string) => void) | undefined =>
+  opts.explain === true ? (cmd) => stderr.write(`+ ${cmd}\n`) : undefined;
 
-  for (let i = 0; i < raw.length; i++) {
-    const token = raw[i] ?? "";
-    if (!token.startsWith("--")) {
-      command ??= token;
-      continue;
-    }
-    const name = token.slice(2);
-    const next = raw[i + 1];
-    if (next === undefined || next.startsWith("--")) {
-      bools.add(name);
-    } else {
-      flags.set(name, [...(flags.get(name) ?? []), next]);
-      i++;
-    }
-  }
-  return { command, flags, bools };
+/**
+ * Days accept 0 and negative values.
+ *
+ * An already-expired identity is the state every real signing certificate
+ * reaches, and being able to produce one on purpose is why capping runs its own
+ * CA at all. Rejecting anything below 1 here would remove the case the tool
+ * exists for.
+ */
+const toDays = (value: string): number => {
+  const n = Number(value);
+  if (!Number.isInteger(n)) throw new Error(`expected a whole number of days, got "${value}"`);
+  return n;
 };
 
-const one = (args: Args, name: string): string | undefined => args.flags.get(name)?.[0];
+/** `--root` may be given more than once; each PEM is a trust anchor. */
+const collect = (value: string, previous: string[]): string[] => [...previous, value];
 
-const require_ = (args: Args, name: string): string => {
-  const value = one(args, name);
-  if (value === undefined) {
-    stderr.write(`capping: --${name} is required\n`);
-    exit(2);
-  }
-  return value;
-};
+const explainOption = new Option("--explain", "print every openssl command before running it");
 
-const explainer = (args: Args): ((cmd: string) => void) | undefined =>
-  args.bools.has("explain") ? (cmd) => stderr.write(`+ ${cmd}\n`) : undefined;
-
-async function cmdInit(args: Args): Promise<void> {
-  const dir = require_(args, "dir");
-  const domain = require_(args, "domain");
-  const onCommand = explainer(args);
-
+async function cmdInit(opts: {
+  dir: string;
+  domain: string;
+  signerDays: number;
+  caDays: number;
+  explain?: boolean;
+}): Promise<void> {
+  const onCommand = explainer(opts);
   const identity = await initIdentity({
-    dir,
-    domain,
-    ...(one(args, "signer-days") === undefined
-      ? {}
-      : { signerDays: Number(one(args, "signer-days")) }),
-    ...(one(args, "ca-days") === undefined ? {} : { caDays: Number(one(args, "ca-days")) }),
+    dir: opts.dir,
+    domain: opts.domain,
+    signerDays: opts.signerDays,
+    caDays: opts.caDays,
     ...(onCommand === undefined ? {} : { onCommand }),
   });
 
   const p = identityPaths(identity.dir);
-  stdout.write(`identity for ${domain} in ${identity.dir}\n`);
+  stdout.write(`identity for ${opts.domain} in ${identity.dir}\n`);
   stdout.write(`  signing certificate  ${p.signerCert}\n`);
   stdout.write(`  trust root           ${p.caCert}\n`);
   stdout.write(`  timestamp authority  ${p.tsaCert}\n`);
 }
 
-async function cmdSign(args: Args): Promise<void> {
-  const dir = require_(args, "dir");
-  const onCommand = explainer(args);
-  const file = one(args, "file");
+async function cmdSign(opts: {
+  dir: string;
+  hash?: string;
+  file?: string;
+  out?: string;
+  explain?: boolean;
+}): Promise<void> {
+  const onCommand = explainer(opts);
 
-  const hash =
-    one(args, "hash") ??
-    (file === undefined
-      ? require_(args, "hash")
-      : await hashFile(file, ...(onCommand === undefined ? [] : [onCommand])));
+  // Not `requiredOption` on either: exactly one of the two is needed, which
+  // commander has no way to express. Written as a branch rather than a `??`
+  // chain so the narrowing is the compiler's rather than an assertion's.
+  let hash: string;
+  if (opts.hash !== undefined) {
+    hash = opts.hash;
+  } else if (opts.file !== undefined) {
+    hash = await hashFile(opts.file, ...(onCommand === undefined ? [] : [onCommand]));
+  } else {
+    stderr.write("capping: one of --hash or --file is required\n");
+    exit(2);
+  }
 
-  const identity = await loadIdentity(dir, onCommand);
+  const identity = await loadIdentity(opts.dir, onCommand);
   const signedData = await sign(identity, {
     hash,
     ...(onCommand === undefined ? {} : { onCommand }),
   });
 
   const json = `${JSON.stringify(toDatapackageDigest(signedData), null, 2)}\n`;
-  const out = one(args, "out");
-  if (out === undefined) stdout.write(json);
-  else await writeFile(out, json, "utf8");
+  if (opts.out === undefined) stdout.write(json);
+  else await writeFile(opts.out, json, "utf8");
 }
 
-async function cmdVerify(args: Args): Promise<void> {
-  const file = require_(args, "file");
-  const onCommand = explainer(args);
+async function cmdVerify(opts: {
+  file: string;
+  root: string[];
+  allowExpired?: boolean;
+  explain?: boolean;
+}): Promise<void> {
+  const onCommand = explainer(opts);
 
-  const parsed: unknown = JSON.parse(await readFile(file, "utf8"));
+  const parsed: unknown = JSON.parse(await readFile(opts.file, "utf8"));
   // Accept either a whole datapackage-digest.json or a bare signedData, since
   // both turn up while debugging.
   const signedData =
@@ -138,17 +134,15 @@ async function cmdVerify(args: Args): Promise<void> {
       ? parseDatapackageDigest(parsed).signedData
       : parseSignedData(parsed);
   if (signedData === undefined) {
-    stderr.write(`capping: ${file} has no signedData\n`);
+    stderr.write(`capping: ${opts.file} has no signedData\n`);
     exit(1);
   }
 
-  const roots = await Promise.all(
-    (args.flags.get("root") ?? []).map((path) => readFile(path, "utf8")),
-  );
+  const roots = await Promise.all(opts.root.map((path) => readFile(path, "utf8")));
 
   const report = await verifySignedData(signedData, {
     trustRoots: roots,
-    allowExpired: args.bools.has("allow-expired"),
+    allowExpired: opts.allowExpired === true,
     ...(onCommand === undefined ? {} : { onCommand }),
   });
 
@@ -156,28 +150,31 @@ async function cmdVerify(args: Args): Promise<void> {
   exit(report.valid ? 0 : 1);
 }
 
-async function cmdServe(args: Args): Promise<void> {
-  const dir = require_(args, "dir");
-  const onCommand = explainer(args);
-  const port = Number(one(args, "port") ?? 8080);
-  const host = one(args, "host") ?? "127.0.0.1";
+async function cmdServe(opts: {
+  dir: string;
+  port: number;
+  host: string;
+  token?: string;
+  allowExpired?: boolean;
+  explain?: boolean;
+}): Promise<void> {
+  const onCommand = explainer(opts);
+  const identity = await loadIdentity(opts.dir, onCommand);
 
-  const token = one(args, "token");
-  const identity = await loadIdentity(dir, onCommand);
   await listen(
     {
       identity,
       trustRoots: [identity.rootCert],
-      allowExpired: args.bools.has("allow-expired"),
-      ...(token === undefined ? {} : { token }),
+      allowExpired: opts.allowExpired === true,
+      ...(opts.token === undefined ? {} : { token: opts.token }),
       ...(onCommand === undefined ? {} : { onCommand }),
     },
-    port,
-    host,
+    opts.port,
+    opts.host,
   );
 
-  stdout.write(`capping serving ${identity.domain} on http://${host}:${String(port)}\n`);
-  stdout.write(`  POST /sign    ${token === undefined ? "(open)" : "(bearer token required)"}\n`);
+  stdout.write(`capping serving ${identity.domain} on http://${opts.host}:${String(opts.port)}\n`);
+  stdout.write(`  POST /sign    ${opts.token === undefined ? "(open)" : "(bearer token required)"}\n`);
   stdout.write(`  POST /verify\n`);
   // The process stays up on the listening socket; nothing more to do here.
 }
@@ -191,21 +188,94 @@ function printReport(report: VerifyReport): void {
   stdout.write(report.valid ? "\nvalid\n" : "\nnot valid\n");
 }
 
-async function main(): Promise<void> {
-  const args = parseArgs(argv.slice(2));
-  switch (args.command) {
-    case "init":
-      return cmdInit(args);
-    case "sign":
-      return cmdSign(args);
-    case "verify":
-      return cmdVerify(args);
-    case "serve":
-      return cmdServe(args);
-    default:
-      stdout.write(`${USAGE}\n`);
-      exit(args.command === undefined ? 0 : 2);
-  }
+const program = new Command()
+  .name("capping")
+  .description(
+    "Local wacz-auth signing, driven by openssl.\n" +
+      "Every cryptographic step is an openssl invocation; --explain prints them.",
+  )
+  .version(VERSION);
+
+program
+  .command("init")
+  .description("issue a CA, an ECDSA signing certificate and a timestamp authority")
+  .requiredOption("--dir <dir>", "directory to hold the keys and certificates")
+  .requiredOption("--domain <host>", "hostname the signing certificate is issued for")
+  .option(
+    "--signer-days <n>",
+    "validity of the signing certificate. 0 or less makes an already-expired one, which is the case worth testing",
+    toDays,
+    90,
+  )
+  .option("--ca-days <n>", "validity of the CA and TSA certificates", toDays, 3650)
+  .addOption(explainOption)
+  .action(cmdInit);
+
+program
+  .command("sign")
+  .description("produce a datapackage-digest.json for a hash")
+  .requiredOption("--dir <dir>", "identity directory made by `capping init`")
+  .option("--hash <sha256:hex>", "the hash to sign, exactly as it appears in datapackage.json")
+  .option("--file <path>", "hash this file instead of passing --hash")
+  .option("--out <path>", "write here instead of stdout")
+  .addOption(explainOption)
+  .action(cmdSign);
+
+program
+  .command("verify")
+  .description("check a signature in four stages: signature, chain, domain, timestamp")
+  .requiredOption("--file <path>", "a datapackage-digest.json, or a bare signedData")
+  .option(
+    "--root <pem>",
+    "a PEM file to trust. Repeatable. Without one the chain stage is reported as skipped rather than failed",
+    collect,
+    [],
+  )
+  .option(
+    "--allow-expired",
+    "accept an expired certificate. Signing certificates are short-lived by design, so this is the normal state by the time anyone verifies",
+  )
+  .addOption(explainOption)
+  .action(cmdVerify);
+
+program
+  .command("serve")
+  .description("an authsign-shaped HTTP service: POST /sign and POST /verify")
+  .requiredOption("--dir <dir>", "identity directory made by `capping init`")
+  .option("--port <n>", "port to listen on", (v) => Number(v), 8080)
+  .option("--host <host>", "address to bind. Use 0.0.0.0 inside a container", "127.0.0.1")
+  .option(
+    "--token <token>",
+    "bearer token required by POST /sign. Verification stays open, as it reveals nothing the archive does not",
+  )
+  .option("--allow-expired", "accept expired certificates when verifying")
+  .addOption(explainOption)
+  .action(cmdServe);
+
+/**
+ * Exit codes are part of a CLI's contract, so they are mapped rather than
+ * inherited.
+ *
+ * capping has always answered a usage error with 2 — the conventional code for
+ * "you invoked me wrongly" — and a bare invocation with 0 and the usage text on
+ * stdout. commander answers 1 to all of it and writes the help to stderr. A
+ * script keying on either would break on a change that was supposed to be about
+ * parsing.
+ */
+if (argv.length <= 2) {
+  stdout.write(program.helpInformation());
+  exit(0);
 }
 
-await main();
+program.exitOverride();
+for (const sub of program.commands) sub.exitOverride();
+
+try {
+  await program.parseAsync(argv);
+} catch (err) {
+  const e = err as { code?: string; exitCode?: number };
+  // `--help` and `--version` reach here too, having already printed. They are
+  // not errors.
+  if (e.code === "commander.helpDisplayed" || e.code === "commander.version") exit(0);
+  exit(2);
+}
