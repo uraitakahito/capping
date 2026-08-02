@@ -15,10 +15,12 @@ OpenSSL 3.6.3 9 Jun 2026 (Library: OpenSSL 3.6.3 9 Jun 2026)
 ```console
 $ capping init --dir ./id --domain sign.dev.local
 identity for sign.dev.local in ./id
-  signing certificate  ./id/signer.crt
-  trust root           ./id/ca.crt
-  timestamp authority  ./id/tsa.crt
+  signing certificate  ./id/insecure-dev-signer.crt
+  trust root           ./id/insecure-dev-ca.crt
+  timestamp authority  ./id/insecure-dev-tsa.crt
 ```
+
+ファイル名の `insecure-dev-` は飾りではありません。ここで作られる鍵は**漏れても困らない**ものです —— この CA はどの信頼ストアにも入らず、証明書は誰も信用していないものに署名します。identity ディレクトリごとコミットして構いませんし、読み取り専用でマウントして配っても構いません。`signer.key` という名前ではそれが伝わらず、リポジトリやログの中で見つけた人が**起きていない事故の対応を始めてしまいます**。
 
 ここでは独立した 2 本の階層を作ります。署名用証明書を発行する CA と、タイムスタンプ局の証明書を発行する無関係な CA です。実運用ではタイムスタンプは別の当事者から得るものですし、分けておけば「1 つのルートが両方を保証してしまったせいでテストが通る」ことが起きません。
 
@@ -55,7 +57,7 @@ $ capping sign --dir ./id --file datapackage.json --out datapackage-digest.json
 ## 3. 検証する
 
 ```console
-$ capping verify --file datapackage-digest.json --root ./id/ca.crt
+$ capping verify --file datapackage-digest.json --root ./id/insecure-dev-ca.crt
   ok       signature  signature matches the hash under the certificate's key
   ok       chain      chain reaches a supplied trust root
   ok       domain     certificate is valid for sign.dev.local
@@ -73,7 +75,7 @@ valid
 ```console
 $ capping init --dir ./expired --domain sign.dev.local --signer-days 0
 $ capping sign --dir ./expired --hash sha256:3dd086a0… --out expired.json
-$ capping verify --file expired.json --root ./expired/ca.crt
+$ capping verify --file expired.json --root ./expired/insecure-dev-ca.crt
   ok       signature  signature matches the hash under the certificate's key
   FAILED   chain      error 10 at 0 depth lookup: certificate has expired
   ok       domain     certificate is valid for sign.dev.local
@@ -87,7 +89,7 @@ not valid
 `--allow-expired` は、タイムスタンプによって「署名が期限切れより前だった」ことが示された後に検証者が使うものです。タイムスタンプが存在する理由そのものです。
 
 ```console
-$ capping verify --file expired.json --root ./expired/ca.crt --allow-expired
+$ capping verify --file expired.json --root ./expired/insecure-dev-ca.crt --allow-expired
   ok       chain      chain reaches a supplied trust root
 ```
 

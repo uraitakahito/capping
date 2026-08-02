@@ -3,14 +3,14 @@ title: capping
 description: openssl だけで動く、ローカルの wacz-auth 署名スタンドイン。
 ---
 
-capping は [wacz-auth](https://specs.webrecorder.net/wacz-auth/0.1.0/) 署名サービスのローカル代替です。自前の CA・署名用証明書・RFC 3161 タイムスタンプ局を発行し、WACZ の `datapackage-digest.json` に入る `signedData` を作ります。
+capping は [wacz-auth](https://specs.webrecorder.net/wacz-auth/0.1.0/) 署名サービスのローカル代替です。自前の CA・署名用証明書・[RFC 3161](https://www.rfc-editor.org/rfc/rfc3161) タイムスタンプ局を発行し、WACZ の `datapackage-digest.json` に入る `signedData` を作ります。
 
 **暗号処理はすべて `openssl` の呼び出しです。** capping が受け持つのは JSON・一時ファイル・プロセス起動だけです。暗号処理を npm から持ってくることはありません。実行時依存はコマンドラインを解析する [commander](https://www.npmjs.com/package/commander) 1 つだけです。
 
-これは最小主義のための最小主義ではありません。結果を人が確かめられるようにするための設計です。どのコマンドにも `--explain` を付ければ、実際に叩いた openssl の行がそのまま印字されます。信用できない結果は、手で打ち直して再現できます。
+これは結果を人が確かめられるようにするための設計です。どのコマンドにも `--explain` を付ければ、実際に叩いた openssl の行がそのまま印字されます。信用できない結果は、手で打ち直して再現できます。
 
 ```console
-$ capping verify --file datapackage-digest.json --root ca.crt --explain
+$ capping verify --file datapackage-digest.json --root insecure-dev-ca.crt --explain
 + openssl x509 -in leaf.pem -pubkey -noout -out pub.pem
 + openssl dgst -sha256 -verify pub.pem -signature sig.der hash.txt
 + openssl verify -CAfile roots.pem -untrusted untrusted.pem leaf.pem
