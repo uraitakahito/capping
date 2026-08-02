@@ -19,6 +19,8 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { SOFTWARE } from "../src/version.js";
+
 const execFileAsync = promisify(execFile);
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -236,6 +238,9 @@ describe("argument parsing the hand-rolled version got wrong", () => {
     const run = await capping("--version");
 
     expect(run.stdout.trim()).toBe(declared);
+    // And the copy that outlives the process: `software` is written into every
+    // signature, so a stale value there is baked into archives.
+    expect(SOFTWARE).toBe(`capping/${declared}`);
   }, 30_000);
 
   it("documents each subcommand's own options", async () => {
