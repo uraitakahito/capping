@@ -34,6 +34,14 @@ export interface ServerOptions {
   token?: string;
   /** Roots `/verify` trusts. Without them it reports the chain stage skipped. */
   trustRoots?: string[];
+  /**
+   * RFC 3161 authority `/sign` timestamps with.
+   *
+   * Per-server rather than per-request: which authority a deployment trusts is
+   * not something a caller should be able to redirect, and a signature is worth
+   * less if the timestamp on it came from wherever the requester pointed.
+   */
+  tsaUrl?: string;
   allowExpired?: boolean;
   onCommand?: (commandLine: string) => void;
 }
@@ -130,6 +138,7 @@ export function createServer(options: ServerOptions): Server {
         hash,
         ...(typeof created === "string" ? { created } : {}),
         ...(typeof software === "string" ? { software } : {}),
+        ...(options.tsaUrl === undefined ? {} : { tsaUrl: options.tsaUrl }),
         ...(options.onCommand === undefined ? {} : { onCommand: options.onCommand }),
       });
       send(res, 200, signedData);

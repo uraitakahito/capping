@@ -15,6 +15,11 @@ capping implements the second of the spec's two formats — **Domain-Ownership I
 ```ts file="src/sign.ts#sign-steps"
 ```
 
+The timestamp is not capping's to make: it is asked for, from the RFC 3161 authority `--tsa-url` names. Building the request stays an openssl invocation — `ts -query` is a pure transformation that needs no key and no configuration — so what was dropped is only the part that answered it.
+
+```ts file="src/sign.ts#timestamp-request"
+```
+
 ## Two things the spec does not say
 
 Both were found by taking the reference implementation's output apart rather than by reading the specification, and getting either one wrong produces something that looks entirely plausible while verifying against nothing.

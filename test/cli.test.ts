@@ -133,9 +133,18 @@ describe("capping verify", () => {
     expect(run.stderr).toContain("+ openssl dgst -sha256 -verify");
     expect(run.stderr).toContain("+ openssl verify -CAfile");
     expect(run.stderr).toContain("+ openssl x509 -in leaf.pem -noout -checkhost");
-    expect(run.stderr).toContain("+ openssl ts -verify");
     // stdout stays the report, so `--explain` can be added without breaking a pipe.
     expect(run.stdout).not.toContain("+ openssl");
+  }, 60_000);
+
+  it("prints the timestamp command too, when there is a timestamp to check", async () => {
+    // `digest` above has none: signing without `--tsa-url` produces no token,
+    // so the stage is skipped and the command never runs. py-wacz's fixture
+    // carries a real one, which makes it the input that reaches this line.
+    const fixture = join(root, "test", "fixtures", "pywacz-signed.datapackage-digest.json");
+    const run = await capping("verify", "--file", fixture, "--allow-expired", "--explain");
+
+    expect(run.stderr).toContain("+ openssl ts -verify");
   }, 60_000);
 });
 

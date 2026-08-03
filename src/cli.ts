@@ -74,7 +74,7 @@ async function cmdInit(opts: {
   stdout.write(`identity for ${opts.domain} in ${identity.dir}\n`);
   stdout.write(`  signing certificate  ${p.signerCert}\n`);
   stdout.write(`  trust root           ${p.caCert}\n`);
-  stdout.write(`  timestamp authority  ${p.tsaCert}\n`);
+  stdout.write(`  timestamps           pass --tsa-url to sign; capping issues none\n`);
 }
 
 async function cmdSign(opts: {
@@ -82,6 +82,7 @@ async function cmdSign(opts: {
   hash?: string;
   file?: string;
   out?: string;
+  tsaUrl?: string;
   explain?: boolean;
 }): Promise<void> {
   const onCommand = explainer(opts);
@@ -102,6 +103,7 @@ async function cmdSign(opts: {
   const identity = await loadIdentity(opts.dir, onCommand);
   const signedData = await sign(identity, {
     hash,
+    ...(opts.tsaUrl === undefined ? {} : { tsaUrl: opts.tsaUrl }),
     ...(onCommand === undefined ? {} : { onCommand }),
   });
 
@@ -147,6 +149,7 @@ async function cmdServe(opts: {
   port: number;
   host: string;
   token?: string;
+  tsaUrl?: string;
   allowExpired?: boolean;
   explain?: boolean;
 }): Promise<void> {
@@ -158,6 +161,7 @@ async function cmdServe(opts: {
       identity,
       trustRoots: [identity.rootCert],
       allowExpired: opts.allowExpired === true,
+      ...(opts.tsaUrl === undefined ? {} : { tsaUrl: opts.tsaUrl }),
       ...(opts.token === undefined ? {} : { token: opts.token }),
       ...(onCommand === undefined ? {} : { onCommand }),
     },
@@ -190,7 +194,7 @@ const program = new Command()
 
 program
   .command("init")
-  .description("issue a CA, an ECDSA signing certificate and a timestamp authority")
+  .description("issue a CA and an ECDSA signing certificate")
   .requiredOption("--dir <dir>", "directory to hold the keys and certificates")
   .requiredOption("--domain <host>", "hostname the signing certificate is issued for")
   .option(
@@ -199,7 +203,7 @@ program
     toDays,
     90,
   )
-  .option("--ca-days <n>", "validity of the CA and TSA certificates", toDays, 3650)
+  .option("--ca-days <n>", "validity of the CA certificate", toDays, 3650)
   .addOption(explainOption)
   .action(cmdInit);
 
@@ -210,6 +214,11 @@ program
   .option("--hash <sha256:hex>", "the hash to sign, exactly as it appears in datapackage.json")
   .option("--file <path>", "hash this file instead of passing --hash")
   .option("--out <path>", "write here instead of stdout")
+  .option(
+    "--tsa-url <url>",
+    "RFC 3161 authority to timestamp the signature with. Without it the " +
+      "signature carries no timestamp",
+  )
   .addOption(explainOption)
   .action(cmdSign);
 
@@ -236,6 +245,11 @@ program
   .requiredOption("--dir <dir>", "identity directory made by `capping init`")
   .option("--port <n>", "port to listen on", (v) => Number(v), 8080)
   .option("--host <host>", "address to bind. Use 0.0.0.0 inside a container", "127.0.0.1")
+  .option(
+    "--tsa-url <url>",
+    "RFC 3161 authority to timestamp signatures with. Without it signatures " +
+      "carry no timestamp",
+  )
   .option(
     "--token <token>",
     "bearer token required by POST /sign. Verification stays open, as it reveals nothing the archive does not",
