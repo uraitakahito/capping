@@ -16,7 +16,13 @@ export type { OpensslOptions, RunResult } from "./openssl.js";
 export { initIdentity, identityPaths, loadIdentity } from "./ca.js";
 export type { CappingPaths, Identity, InitOptions } from "./ca.js";
 
-export { hashFile, sign, toDatapackageDigest, writeDatapackageDigest } from "./sign.js";
+export {
+  hashFile,
+  sign,
+  TimestampUnavailableError,
+  toDatapackageDigest,
+  writeDatapackageDigest,
+} from "./sign.js";
 export type { SignOptions } from "./sign.js";
 
 export { parseDatapackageDigest, parseSignedData, splitPemChain } from "./signed-data.js";
