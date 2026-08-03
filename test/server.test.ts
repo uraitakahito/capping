@@ -80,6 +80,41 @@ describe("POST /sign", () => {
     expect((await post("/sign", { hash: "not-a-hash" }, TOKEN)).status).toBe(400);
     expect((await post("/sign", {}, TOKEN)).status).toBe(400);
   }, 60_000);
+
+  it("blames itself, not the caller, when the timestamp authority is unreachable", async () => {
+    // 4xx tells a caller to change the request. There is nothing wrong with
+    // this request: the authority this server was configured to use is down,
+    // which is the server's problem and the operator's to fix. Answering 400
+    // sends whoever reads the message looking in the wrong place — and the
+    // message travels: BrowserHive puts it verbatim in `errorDetails`.
+    const unreachable = await listen(
+      {
+        identity,
+        token: TOKEN,
+        trustRoots: [identity.rootCert],
+        // Port 1 is reserved and nothing listens there, so the fetch fails to
+        // connect rather than answering.
+        tsaUrl: "http://127.0.0.1:1/api/v1/timestamp",
+      },
+      0,
+    );
+    const port = (unreachable.address() as AddressInfo).port;
+
+    const res = await fetch(`http://127.0.0.1:${String(port)}/sign`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
+      body: JSON.stringify({ hash: HASH }),
+    });
+
+    expect(res.status).toBe(502);
+    expect(((await res.json()) as { error: string }).error).toContain("timestamp authority");
+
+    await new Promise<void>((resolve) => {
+      unreachable.close(() => {
+        resolve();
+      });
+    });
+  }, 60_000);
 });
 
 describe("POST /verify", () => {
