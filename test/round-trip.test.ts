@@ -17,7 +17,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { initIdentity, loadIdentity, type Identity } from "../src/ca.js";
 import { hashFile, sign, toDatapackageDigest } from "../src/sign.js";
 import { parseDatapackageDigest } from "../src/signed-data.js";
-import { timestampTime, verifySignedData } from "../src/verify.js";
+import { verifySignedData } from "../src/verify.js";
 
 const HASH = "sha256:3dd086a0be145d1108bf32a5cac7c4b4c046eb78365792d4bb28e9f43e3c6571";
 
@@ -34,7 +34,7 @@ afterAll(async () => {
 });
 
 describe("a signature capping made", () => {
-  it("passes every stage against its own roots", async () => {
+  it("passes every stage it can reach against its own roots", async () => {
     const signedData = await sign(identity, { hash: HASH });
     const report = await verifySignedData(signedData, {
       trustRoots: [identity.rootCert],
@@ -43,19 +43,11 @@ describe("a signature capping made", () => {
     expect(report.stages.signature.status).toBe("ok");
     expect(report.stages.chain.status).toBe("ok");
     expect(report.stages.domain.status).toBe("ok");
-    expect(report.stages.timestamp.status).toBe("ok");
+    // Skipped rather than ok: capping no longer issues timestamps, so without
+    // `--tsa-url` there is nothing here to check. See remote-tsa.test.ts for
+    // the stage passing against an authority.
+    expect(report.stages.timestamp.status).toBe("skipped");
     expect(report.valid).toBe(true);
-  }, 60_000);
-
-  it("carries a timestamp from around when it was signed", async () => {
-    const before = Date.now();
-    const signedData = await sign(identity, { hash: HASH });
-    const stamped = await timestampTime(signedData.timeSignature!);
-
-    expect(stamped).toBeDefined();
-    // RFC 3161 timestamps are second-granular here, so allow a minute either
-    // way rather than asserting an exact instant.
-    expect(Math.abs(stamped!.getTime() - before)).toBeLessThan(60_000);
   }, 60_000);
 
   it("fails the chain stage against an unrelated root", async () => {
@@ -180,9 +172,13 @@ describe("an identity directory that was moved", () => {
     const signedData = await sign(identity, { hash: HASH });
     const report = await verifySignedData(signedData, { trustRoots: [identity.rootCert] });
 
-    // The timestamp stage is the one that would break: it is the only step
-    // that reads a config file full of paths.
-    expect(report.stages.timestamp.status).toBe("ok");
+    // The signature stage is the one that would break: it reads the key and
+    // the certificate out of the directory by path. This used to be the
+    // timestamp stage's job to prove, back when signing wrote a config file
+    // full of absolute paths — that file is gone, and with it the sharpest
+    // way an identity could stop being portable.
+    expect(report.stages.signature.status).toBe("ok");
+    expect(report.stages.chain.status).toBe("ok");
     expect(report.valid).toBe(true);
   }, 120_000);
 });

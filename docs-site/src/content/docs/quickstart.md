@@ -17,22 +17,25 @@ $ capping init --dir ./id --domain sign.dev.local
 identity for sign.dev.local in ./id
   signing certificate  ./id/insecure-dev-signer.crt
   trust root           ./id/insecure-dev-ca.crt
-  timestamp authority  ./id/insecure-dev-tsa.crt
+  timestamps           pass --tsa-url to sign; capping issues none
 ```
 
 The `insecure-dev-` in every filename is not decoration. These keys are **safe to leak**: the CA reaches no trust store, and the certificates sign nothing anyone trusts. Commit the identity directory, mount it read-only, hand it around. A file called `signer.key` says none of that, and someone who finds one in a repository or a log **starts responding to an incident that did not happen**.
 
-This creates two separate hierarchies: a CA that issues the signing certificate, and an unrelated CA that issues the timestamp authority's. Real deployments get their timestamps from a different party, and keeping the two apart here means a test cannot pass because one root happened to vouch for both.
+capping issues no timestamps of its own. It used to, and the stand-in that did restarted its serial number at `01` for every signature — RFC 3161 says serials MUST be unique per authority, so what came out looked like a timestamp and was not one. Timestamping is now somebody else's job, named by `--tsa-url`.
 
 The signing key is ECDSA P-256, matching what the reference implementation uses. The certificate carries `subjectAltName=DNS:<domain>`, because the domain stage checks names the way a TLS client does rather than reading the CN by hand.
 
 ## 2. Sign
 
 ```console
-$ capping sign --dir ./id --file datapackage.json --out datapackage-digest.json
+$ capping sign --dir ./id --file datapackage.json --out datapackage-digest.json \
+    --tsa-url http://localhost:3004/api/v1/timestamp
 ```
 
 `--file` hashes the file for you. `--hash sha256:…` takes a digest you already have — for example one a capture pipeline computed.
+
+`--tsa-url` is optional. Without it the signature carries no `timeSignature` and no `timestampCert`, and verification reports the timestamp stage as `skipped` rather than failing — wacz-auth makes both members optional, and a signature with no timestamp is weaker rather than broken.
 
 The result is the file that belongs at the WACZ root:
 

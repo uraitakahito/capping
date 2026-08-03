@@ -17,9 +17,9 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { SOFTWARE } from "./version.js";
-import { buildTsaConfig, identityPaths, type Identity } from "./ca.js";
+import { identityPaths, type Identity } from "./ca.js";
 import { Openssl, withTempDir, writeExact } from "./openssl.js";
-import type { SignedData } from "./signed-data.js";
+import { splitPemChain, type SignedData } from "./signed-data.js";
 
 export interface SignOptions {
   /** `sha256:<hex>` of `datapackage.json`, exactly as it appears there. */
@@ -27,6 +27,16 @@ export interface SignOptions {
   /** Defaults to now. */
   created?: string;
   software?: string;
+  /**
+   * An RFC 3161 authority to timestamp the signature with.
+   *
+   * Omitted, the result carries no `timeSignature` and no `timestampCert`.
+   * wacz-auth makes both optional, and a signature without a timestamp is
+   * weaker rather than broken — but there is no longer a built-in authority to
+   * fall back on, because a stand-in that reused serial 01 for every signature
+   * was a worse answer than saying nothing.
+   */
+  tsaUrl?: string;
   onCommand?: (commandLine: string) => void;
 }
 
@@ -51,39 +61,19 @@ export async function sign(identity: Identity, options: SignOptions): Promise<Si
     await openssl.run("base64", "-A", "-in", join(work, "sig.der"), "-out", join(work, "sig.b64"));
     const signature = (await readFile(join(work, "sig.b64"), "utf8")).trim();
 
-    // Timestamp the base64 text of the signature.
+    // The bytes a timestamp would cover: the base64 *text* of the signature.
     const b64Path = join(work, "sig-b64.txt");
     await writeExact(b64Path, signature);
-    await openssl.run("ts", "-query", "-data", b64Path, "-sha256", "-cert", "-out", join(work, "ts.tsq"));
     // #endregion sign-steps
-    // The TSA config and its serial live here, in the temp directory, not in
-    // the identity. Both would otherwise pin the identity to one absolute path
-    // and require it to be writable — and a development CA is most useful when
-    // it can be committed, mounted read-only, and used from anywhere.
-    //
-    // The serial therefore restarts at 01 for every signature. A real TSA must
-    // not repeat serials; this one is a stand-in whose tokens are checked by
-    // `openssl ts -verify`, which does not care.
-    const serialPath = join(work, "tsa.serial");
-    const confPath = join(work, "tsa.cnf");
-    await writeFile(serialPath, "01\n", "utf8");
-    await writeFile(confPath, buildTsaConfig(p, serialPath), "utf8");
 
-    await openssl.run(
-      "ts", "-reply",
-      "-config", confPath, "-section", "tsa_config",
-      "-queryfile", join(work, "ts.tsq"),
-      "-out", join(work, "ts.tsr"),
-    );
-    // Stored whole, status wrapper included — that is the shape py-wacz writes
-    // and the shape `openssl ts -verify` expects back without `-token_in`.
-    const timeSignature = (await readFile(join(work, "ts.tsr"))).toString("base64");
+    const timestamp =
+      options.tsaUrl === undefined
+        ? undefined
+        : await requestTimestamp(openssl, work, b64Path, options.tsaUrl, options.onCommand);
 
-    const [signerCert, caCert, tsaCert, tsaCaCert] = await Promise.all([
+    const [signerCert, caCert] = await Promise.all([
       readFile(p.signerCert, "utf8"),
       readFile(p.caCert, "utf8"),
-      readFile(p.tsaCert, "utf8"),
-      readFile(p.tsaCaCert, "utf8"),
     ]);
 
     return {
@@ -97,10 +87,78 @@ export async function sign(identity: Identity, options: SignOptions): Promise<Si
       domain: identity.domain,
       // Leaf first, then its issuer — the order every consumer assumes.
       domainCert: signerCert + caCert,
-      timeSignature,
-      timestampCert: tsaCert + tsaCaCert,
+      ...timestamp,
     };
   });
+}
+
+/**
+ * Ask an RFC 3161 authority to timestamp `dataPath`, and take its chain apart.
+ *
+ * Building the request stays an openssl invocation: `ts -query` is a pure
+ * transformation that needs no key and no configuration. What was dropped is
+ * answering it, which capping had no business doing.
+ */
+async function requestTimestamp(
+  openssl: Openssl,
+  work: string,
+  dataPath: string,
+  tsaUrl: string,
+  onCommand?: (commandLine: string) => void,
+): Promise<{ timeSignature: string; timestampCert: string }> {
+  // #region timestamp-request
+  const tsq = join(work, "ts.tsq");
+  await openssl.run("ts", "-query", "-data", dataPath, "-sha256", "-cert", "-out", tsq);
+
+  // Every other step prints the command that produced it, so that a reader can
+  // repeat the whole thing by hand rather than trusting this tool. The step
+  // stopped being an openssl invocation; it should not stop being repeatable.
+  onCommand?.(
+    `curl -sS -H "Content-Type: application/timestamp-query" \\\n` +
+      `     --data-binary @ts.tsq ${tsaUrl} -o ts.tsr`,
+  );
+
+  const res = await fetch(tsaUrl, {
+    method: "POST",
+    headers: { "content-type": "application/timestamp-query" },
+    body: await readFile(tsq),
+  });
+  if (!res.ok) {
+    throw new Error(`the timestamp authority at ${tsaUrl} answered ${String(res.status)}`);
+  }
+
+  // Stored whole, status wrapper included — that is the shape py-wacz writes
+  // and the shape `openssl ts -verify` expects back without `-token_in`.
+  const response = Buffer.from(await res.arrayBuffer());
+  const tsr = join(work, "ts.tsr");
+  await writeFile(tsr, response);
+  // #endregion timestamp-request
+
+  // The authority's own certificates travel inside the token, because
+  // `ts -query -cert` asked for them. There is no file to read them from any
+  // more, and asking the authority a second time over a different endpoint
+  // would be a second thing that can disagree with the first.
+  const der = join(work, "ts-token.der");
+  await openssl.run("ts", "-reply", "-in", tsr, "-token_out", "-out", der);
+  const printed = await openssl.text("pkcs7", "-inform", "DER", "-in", der, "-print_certs");
+  const chain = splitPemChain(printed);
+
+  // `-cert` is a request, not a guarantee, and whether the root travels with
+  // the leaf is the authority's choice — sigstore's, for one, leaves it out
+  // unless told otherwise. A one-entry chain is the failure that hides: every
+  // consumer reading the archive on its own takes the last certificate as the
+  // root, so a lone leaf ends up checked against itself.
+  if (chain.length < 2) {
+    throw new Error(
+      `the timestamp authority at ${tsaUrl} returned ${String(chain.length)} certificate(s) ` +
+        `in its token; a chain needs the leaf and the root that issued it`,
+    );
+  }
+
+  return {
+    timeSignature: response.toString("base64"),
+    timestampCert: chain.join(""),
+  };
 }
 
 /**

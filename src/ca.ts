@@ -40,8 +40,6 @@ export interface Identity {
   domain: string;
   /** PEM of the root that signed the signing certificate. */
   rootCert: string;
-  /** PEM of the root that signed the timestamp certificate. */
-  tsaRootCert: string;
 }
 
 /**
@@ -75,50 +73,10 @@ const paths = (dir: string) => ({
   signerCsr: resolve(dir, `${PREFIX}signer.csr`),
   signerCert: resolve(dir, `${PREFIX}signer.crt`),
   signerExt: resolve(dir, `${PREFIX}signer.ext`),
-  tsaCaKey: resolve(dir, `${PREFIX}tsa-ca.key`),
-  tsaCaCert: resolve(dir, `${PREFIX}tsa-ca.crt`),
-  tsaKey: resolve(dir, `${PREFIX}tsa.key`),
-  tsaCsr: resolve(dir, `${PREFIX}tsa.csr`),
-  tsaCert: resolve(dir, `${PREFIX}tsa.crt`),
-  tsaExt: resolve(dir, `${PREFIX}tsa.ext`),
 });
 
 export type CappingPaths = ReturnType<typeof paths>;
 export const identityPaths = paths;
-
-/**
- * The TSA section openssl needs to act as a timestamp authority.
- *
- * Built at signing time rather than stored in the identity directory, and that
- * is not a detail. `ts -reply` reads this config with whatever cwd the caller
- * has, so every path inside it has to be absolute — which means a config
- * written once at `init` freezes the identity to the machine that made it.
- * Committing such a directory and mounting it somewhere else produces an
- * openssl error about files that are not there.
- *
- * Generating it per call keeps the identity directory relocatable and
- * read-only: nothing in it refers to where it lives.
- *
- * `digests` looks optional and is not: without it every `ts -reply` stops with
- * "cannot find config variable". `accuracy` and `ess_cert_id_chain` genuinely
- * are optional — they warn and carry on.
- */
-export const buildTsaConfig = (p: CappingPaths, serialPath: string): string =>
-  [
-    "[ tsa_config ]",
-    `serial = ${serialPath}`,
-    `signer_cert = ${p.tsaCert}`,
-    `certs = ${p.tsaCaCert}`,
-    `signer_key = ${p.tsaKey}`,
-    "signer_digest = sha256",
-    "default_policy = 1.3.6.1.4.1.99999.1",
-    "granularity = 1",
-    "ordering = yes",
-    "tsa_name = yes",
-    "ess_cert_id_alg = sha256",
-    "digests = sha256, sha384, sha512",
-    "",
-  ].join("\n");
 
 export async function initIdentity(options: InitOptions): Promise<Identity> {
   const { dir, domain } = options;
@@ -154,35 +112,10 @@ export async function initIdentity(options: InitOptions): Promise<Identity> {
     "-out", p.signerCert, "-days", String(signerDays), "-extfile", p.signerExt,
   );
 
-  // A separate root for the TSA. Real deployments get their timestamps from an
-  // unrelated party, and keeping the two hierarchies apart here means a test
-  // cannot accidentally pass because one root vouched for both.
-  await openssl.run(
-    "req", "-x509", "-newkey", "rsa:2048", "-nodes",
-    "-keyout", p.tsaCaKey, "-out", p.tsaCaCert,
-    "-days", String(caDays), "-subj", "/CN=capping-dev-tsa-ca",
-  );
-  await openssl.run(
-    "req", "-newkey", "rsa:2048", "-nodes",
-    "-keyout", p.tsaKey, "-out", p.tsaCsr, "-subj", "/CN=capping-dev-tsa",
-  );
-  // Without this EKU `openssl ts -verify` refuses the token outright.
-  await writeFile(p.tsaExt, "extendedKeyUsage=critical,timeStamping\n", "utf8");
-  await openssl.run(
-    "x509", "-req", "-in", p.tsaCsr,
-    "-CA", p.tsaCaCert, "-CAkey", p.tsaCaKey, "-CAcreateserial",
-    "-out", p.tsaCert, "-days", String(caDays), "-extfile", p.tsaExt,
-  );
-
-  // No tsa.cnf and no tsa.serial here. Both are derived per signature (see
-  // `sign`), which is what lets this directory be committed, mounted read-only,
-  // and used from a different path than the one it was created at.
-
   return {
     dir,
     domain,
     rootCert: await readFile(p.caCert, "utf8"),
-    tsaRootCert: await readFile(p.tsaCaCert, "utf8"),
   };
 }
 
@@ -213,6 +146,5 @@ export async function loadIdentity(
     dir,
     domain: cn,
     rootCert: await readFile(p.caCert, "utf8"),
-    tsaRootCert: await readFile(p.tsaCaCert, "utf8"),
   };
 }

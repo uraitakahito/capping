@@ -15,6 +15,11 @@ capping は仕様の 2 形式のうち後者、**Domain-Ownership Identity + Sig
 ```ts file="src/sign.ts#sign-steps"
 ```
 
+タイムスタンプは capping が作るのではなく、`--tsa-url` が指す RFC 3161 認証局に求めます。要求の組み立ては openssl のままです —— `ts -query` は鍵も設定も要らない純粋な変換なので、捨てたのは**応答を自作していた部分だけ**です。
+
+```ts file="src/sign.ts#timestamp-request"
+```
+
 ## 仕様書に書かれていない 2 点
 
 どちらも仕様を読んで分かったのではなく、リファレンス実装の出力を分解して分かったことです。そしてどちらを間違えても、**何も検証していないのに完全にそれらしく見えるもの**ができあがります。

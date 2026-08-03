@@ -17,22 +17,25 @@ $ capping init --dir ./id --domain sign.dev.local
 identity for sign.dev.local in ./id
   signing certificate  ./id/insecure-dev-signer.crt
   trust root           ./id/insecure-dev-ca.crt
-  timestamp authority  ./id/insecure-dev-tsa.crt
+  timestamps           pass --tsa-url to sign; capping issues none
 ```
 
 ファイル名の `insecure-dev-` は飾りではありません。ここで作られる鍵は**漏れても困らない**ものです —— この CA はどの信頼ストアにも入らず、証明書は誰も信用していないものに署名します。identity ディレクトリごとコミットして構いませんし、読み取り専用でマウントして配っても構いません。`signer.key` という名前ではそれが伝わらず、リポジトリやログの中で見つけた人が**起きていない事故の対応を始めてしまいます**。
 
-ここでは独立した 2 本の階層を作ります。署名用証明書を発行する CA と、タイムスタンプ局の証明書を発行する無関係な CA です。実運用ではタイムスタンプは別の当事者から得るものですし、分けておけば「1 つのルートが両方を保証してしまったせいでテストが通る」ことが起きません。
+capping はタイムスタンプを自分では発行しません。以前は発行していましたが、その代役は**署名のたびにシリアル番号を `01` に戻していました** —— RFC 3161 はシリアルが認証局ごとに一意で**なければならない**と定めているので、出てきたものはタイムスタンプに見えてタイムスタンプではありませんでした。時刻の付与は `--tsa-url` で指す別の当事者の仕事になりました。
 
 署名鍵は ECDSA P-256 で、リファレンス実装と同じです。証明書には `subjectAltName=DNS:<domain>` を入れます。domain 段階は CN を手で読むのではなく、TLS クライアントと同じ規則で名前を照合するからです。
 
 ## 2. 署名する
 
 ```console
-$ capping sign --dir ./id --file datapackage.json --out datapackage-digest.json
+$ capping sign --dir ./id --file datapackage.json --out datapackage-digest.json \
+    --tsa-url http://localhost:3004/api/v1/timestamp
 ```
 
 `--file` を渡すとファイルのハッシュを計算します。既にダイジェストがあるなら `--hash sha256:…` を使います（キャプチャ側で計算済みの場合など）。
+
+`--tsa-url` は任意です。付けない場合、署名は `timeSignature` も `timestampCert` も持たず、検証では timestamp 段階が失敗ではなく `skipped` になります —— wacz-auth はどちらの項目も任意としており、タイムスタンプの無い署名は**壊れているのではなく弱い**からです。
 
 出力は WACZ のルートに置くファイルそのものです。
 
