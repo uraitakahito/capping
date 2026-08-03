@@ -17,7 +17,7 @@ import { timingSafeEqual } from "node:crypto";
 import { createServer as createHttpServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 
 import type { Identity } from "./ca.js";
-import { sign } from "./sign.js";
+import { sign, TimestampUnavailableError } from "./sign.js";
 import { parseDatapackageDigest, parseSignedData, type SignedData } from "./signed-data.js";
 import { verifySignedData } from "./verify.js";
 
@@ -165,6 +165,14 @@ export function createServer(options: ServerOptions): Server {
     void handle(req, res).catch((err: unknown) => {
       if (err instanceof HttpError) {
         send(res, err.status, { error: err.message });
+        return;
+      }
+      // The authority this server was told to use did not answer, or answered
+      // with something unusable. Nothing is wrong with the request, so 4xx
+      // would send whoever reads this looking in the wrong place — and the
+      // message travels: BrowserHive puts it verbatim in `errorDetails`.
+      if (err instanceof TimestampUnavailableError) {
+        send(res, 502, { error: err.message });
         return;
       }
       // `sign` throws on a malformed hash, and the parsers throw on a

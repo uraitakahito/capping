@@ -21,6 +21,21 @@ import { identityPaths, type Identity } from "./ca.js";
 import { Openssl, withTempDir, writeExact } from "./openssl.js";
 import { splitPemChain, type SignedData } from "./signed-data.js";
 
+/**
+ * The timestamp could not be obtained — for reasons on this side of the call.
+ *
+ * Separate from the errors `sign` throws over a malformed hash, because the two
+ * want opposite responses: one asks the caller to send something else, the
+ * other asks an operator to look at a service. A server that cannot tell them
+ * apart sends whoever reads the message looking in the wrong place.
+ */
+export class TimestampUnavailableError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = "TimestampUnavailableError";
+  }
+}
+
 export interface SignOptions {
   /** `sha256:<hex>` of `datapackage.json`, exactly as it appears there. */
   hash: string;
@@ -118,13 +133,28 @@ async function requestTimestamp(
       `     --data-binary @ts.tsq ${tsaUrl} -o ts.tsr`,
   );
 
-  const res = await fetch(tsaUrl, {
-    method: "POST",
-    headers: { "content-type": "application/timestamp-query" },
-    body: await readFile(tsq),
-  });
+  let res: Response;
+  try {
+    res = await fetch(tsaUrl, {
+      method: "POST",
+      headers: { "content-type": "application/timestamp-query" },
+      body: await readFile(tsq),
+    });
+  } catch (cause) {
+    // Not reachable at all: wrong host, nothing listening, DNS gone. The
+    // original message says which, and it is worth keeping — "fetch failed"
+    // on its own has sent more than one person looking at the wrong service.
+    throw new TimestampUnavailableError(
+      `the timestamp authority at ${tsaUrl} could not be reached: ${
+        cause instanceof Error ? cause.message : String(cause)
+      }`,
+      { cause },
+    );
+  }
   if (!res.ok) {
-    throw new Error(`the timestamp authority at ${tsaUrl} answered ${String(res.status)}`);
+    throw new TimestampUnavailableError(
+      `the timestamp authority at ${tsaUrl} answered ${String(res.status)}`,
+    );
   }
 
   // Stored whole, status wrapper included — that is the shape py-wacz writes
@@ -149,7 +179,7 @@ async function requestTimestamp(
   // consumer reading the archive on its own takes the last certificate as the
   // root, so a lone leaf ends up checked against itself.
   if (chain.length < 2) {
-    throw new Error(
+    throw new TimestampUnavailableError(
       `the timestamp authority at ${tsaUrl} returned ${String(chain.length)} certificate(s) ` +
         `in its token; a chain needs the leaf and the root that issued it`,
     );

@@ -19,7 +19,7 @@ import { Buffer } from "node:buffer";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { initIdentity, type Identity } from "../src/ca.js";
-import { sign } from "../src/sign.js";
+import { sign, TimestampUnavailableError } from "../src/sign.js";
 import { splitPemChain } from "../src/signed-data.js";
 import { timestampTime, verifySignedData } from "../src/verify.js";
 import { Openssl, withTempDir, writeExact } from "../src/openssl.js";
@@ -240,6 +240,12 @@ describe("signing against an external TSA", () => {
     const address = bare.address();
     const port = typeof address === "object" && address !== null ? address.port : 0;
 
+    // The type matters as much as the throw: the server turns this one into a
+    // 502, and a plain Error would come back as 400 — telling the caller to fix
+    // a request that was never the problem.
+    await expect(
+      sign(identity, { hash: HASH, tsaUrl: `http://127.0.0.1:${String(port)}/` }),
+    ).rejects.toThrow(TimestampUnavailableError);
     await expect(
       sign(identity, { hash: HASH, tsaUrl: `http://127.0.0.1:${String(port)}/` }),
     ).rejects.toThrow(/500/);
