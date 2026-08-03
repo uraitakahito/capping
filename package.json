@@ -4,7 +4,7 @@
     "https://stackoverflow.com/questions/14221579/how-do-i-add-comments-to-package-json-for-npm-install"
   ],
   "name": "capping",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Local wacz-auth signing stand-in — a private CA, an RFC 3161 timestamp authority, and a signer, all driven by openssl.",
   "type": "module",
   "exports": {
