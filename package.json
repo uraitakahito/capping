@@ -93,7 +93,7 @@
     "mistyped --signer-days left an identity meant to be expired valid instead."
   ],
   "//packageManager": "Read by pnpm/action-setup@v4 in CI, so the version there matches this one without being repeated in the workflow. See pnpm-workspace.yaml for the two places pnpm departs from npm silently (allowBuilds, enablePrePostScripts).",
-  "packageManager": "pnpm@11.4.0",
+  "packageManager": "pnpm@11.20.0+sha512.9a6f330a95b66446ea088faf1521405a8a01f07fde7124cc9958dfed52d4bb436737e65b08f85f37b46fcba375092558ac51262b816844b22f63406ed166bfee",
   "//engines": "Node 24 for the ESM and type-stripping era the sibling repositories target. .nvmrc carries the same number for CI.",
   "engines": {
     "node": ">=24"
