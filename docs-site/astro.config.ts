@@ -6,19 +6,6 @@ import hastRebaseLinks from "./src/plugins/hast-rebase-links";
 
 const BASE = "/capping";
 
-/**
- * Rehype plugin: give absolute local links written in markdown (`/page/`) the
- * site base, and — on pages under `/ja/` — the locale prefix too.
- *
- * Starlight's own sidebar and nav resolve slugs and are already base- and
- * locale-aware, but a `[text](/page/)` written in MDX/MD body text passes
- * through untouched and 404s once the site is served from a subpath. Assets
- * (an href whose last segment has an extension) only get the base.
- *
- * Front matter (hero.actions.link and friends) does not go through this
- * pipeline — write `/capping/page/` there directly.
- */
-
 export default defineConfig({
   site: "https://uraitakahito.github.io",
   base: BASE,

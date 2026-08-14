@@ -5,6 +5,9 @@
 // 本文に書かれた [text](/page/) は素通しになるため、ここで補正する。
 // アセット(最終セグメントに拡張子を持つ href)は base のみ付与する。
 // 既に base-aware なリンクは二重付与しない。
+//
+// フロントマター (hero.actions.link 等) はこの pipeline を通らない。木に来るのは
+// 本文だけなので、そちらは /capping/page/ と直接書く。
 import { fileURLToPath } from "node:url";
 import { defineHastPlugin } from "satteri";
 
