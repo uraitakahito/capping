@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The root is a pnpm project, docs-site/ is an npm one (same split as
       # BrowserHive). pnpm is here only to run the root's `site:check` script;
@@ -70,9 +70,9 @@ jobs:
       # install this job performs. `site:check` needs no root node_modules —
       # it shells into docs-site and then runs check-doc-refs.mjs, which is
       # plain Node with no dependencies.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
