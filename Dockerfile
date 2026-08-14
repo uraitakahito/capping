@@ -7,7 +7,7 @@
 # comes from npm: key generation, certificates, digests, signatures and
 # RFC 3161 are openssl invocations, and openssl comes from apt.
 
-FROM node:24-bookworm-slim AS build
+FROM node:26-bookworm-slim AS build
 WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -30,13 +30,13 @@ RUN pnpm run build
 #
 # --node-linker=hoisted because pnpm's default layout is symlinks into a store
 # that the runtime stage will not have.
-FROM node:24-bookworm-slim AS deps
+FROM node:26-bookworm-slim AS deps
 WORKDIR /deps
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --prod --frozen-lockfile --node-linker=hoisted
 
-FROM node:24-bookworm-slim
+FROM node:26-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production
 
