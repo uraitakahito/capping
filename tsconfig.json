@@ -61,6 +61,14 @@
     "forceConsistentCasingInFileNames": true,
     // Skip type checking of declaration files from node_modules
     "skipLibCheck": true,
+    // Declared, not auto-discovered. TypeScript 6 no longer pulls the packages
+    // under node_modules/@types into a project that sets `include` — they are
+    // not matched by it — so leaving this off loses every Node global and every
+    // `node:` module at once ("Cannot find name 'node:fs/promises'", 50 of them).
+    // Dropping `include` also restores them, but at the cost of compiling
+    // everything under the repository root. `node` is the only @types package
+    // here; the tests import their own globals from "vitest" directly.
+    "types": ["node"],
 
     /*
      * Language and Environment
