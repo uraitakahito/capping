@@ -2,6 +2,14 @@
   // Build config: emit only the shipped sources to dist/. Test files are still
   // type-checked (via tsconfig.json + `npm run typecheck`) but never emitted.
   "extends": "./tsconfig.json",
+  // Spelled out because TypeScript 6 stopped inferring it. The inferred value
+  // was already "src" (the compiler says so in TS5011), so dist/ keeps the same
+  // shape — this pins what used to be derived from whichever files the build
+  // happened to include, where adding a source file outside src/ would have
+  // silently pushed everything down a directory.
+  "compilerOptions": {
+    "rootDir": "src"
+  },
   "include": ["src/**/*"],
   "exclude": ["test/**/*"]
 }
