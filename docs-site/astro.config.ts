@@ -1,6 +1,8 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import remarkCodeRegion from "./src/plugins/remark-code-region";
+import { satteri } from "@astrojs/markdown-satteri";
+import mdastCodeRegion from "./src/plugins/mdast-code-region";
+import hastRebaseLinks from "./src/plugins/hast-rebase-links";
 
 const BASE = "/capping";
 
@@ -16,36 +18,6 @@ const BASE = "/capping";
  * Front matter (hero.actions.link and friends) does not go through this
  * pipeline — write `/capping/page/` there directly.
  */
-function rehypeRebaseLinks() {
-  return function (tree: any, file: any): void {
-    const path: string = file?.path ?? file?.history?.[0] ?? "";
-    const inJa = /[\\/]docs[\\/]ja[\\/]/.test(path);
-    const walk = (node: any): void => {
-      if (
-        node.type === "element" &&
-        node.tagName === "a" &&
-        typeof node.properties?.href === "string"
-      ) {
-        const href: string = node.properties.href;
-        // Leave links that already carry the base alone.
-        if (
-          href.startsWith("/") &&
-          !href.startsWith("//") &&
-          !href.startsWith(BASE + "/") &&
-          href !== BASE
-        ) {
-          const lastSeg = href.split(/[?#]/)[0].split("/").pop() ?? "";
-          const isAsset = lastSeg.includes(".");
-          const locale =
-            inJa && !isAsset && !href.startsWith("/ja/") && href !== "/ja" ? "/ja" : "";
-          node.properties.href = BASE + locale + href;
-        }
-      }
-      for (const child of node.children ?? []) walk(child);
-    };
-    walk(tree);
-  };
-}
 
 export default defineConfig({
   site: "https://uraitakahito.github.io",
@@ -82,7 +54,11 @@ export default defineConfig({
   ],
   // ```ts file="src/…#region" is replaced with the real source at build time.
   markdown: {
-    remarkPlugins: [remarkCodeRegion],
-    rehypePlugins: [rehypeRebaseLinks],
+    // Astro 7.2 の既定プロセッサ。legacy の remarkPlugins/rehypePlugins は
+    // @astrojs/markdown-remark(unified) を要求するので、そちらは使わない。
+    processor: satteri({
+      mdastPlugins: [mdastCodeRegion],
+      hastPlugins: [hastRebaseLinks],
+    }),
   },
 });
