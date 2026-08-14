@@ -1,0 +1,88 @@
+# yaml-language-server: $schema=https://json.schemastore.org/dependabot-2.0.json
+#
+# Dependabot が読むのは **default branch (main) に置かれたこのファイル** だけ。
+# `target-branch` は「PR をどこへ出すか」を指すだけで、設定の置き場所ではない。
+# develop にだけ置いても効かないので、両方に同じものを入れてある。
+#
+# この repo は npm プロジェクトを 2 つ持つ:
+#   /            … pnpm (pnpm-lock.yaml)
+#   /docs-site   … npm  (package-lock.json) — root とは別の lockfile
+# lockfile が別なら entry も別。`directory: /` だけでは docs-site に届かず、
+# 既定動作 (= default branch 宛て) にフォールバックする。
+version: 2
+updates:
+  # ── アプリ本体 ──
+  - package-ecosystem: npm
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+    # 版が枯れてから PR 化する(supply-chain 対策)。security 更新には適用されない
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 3
+    versioning-strategy: increase
+    labels:
+      - dependencies
+    groups:
+      production-dependencies:
+        dependency-type: production
+      development-dependencies:
+        dependency-type: development
+
+  # ── docs-site (Astro) ──
+  #
+  # 本番コードではなくドキュメントのビルド専用なので、種類で分けずに **全部 1 本**
+  # にまとめる。上限も 1。entry ごとに open-pull-requests-limit が効くため、
+  # ここを 3 にすると npm だけで 1 repo 最大 6 本になり、溜まる状態を再生産する。
+  - package-ecosystem: npm
+    directory: /docs-site
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 1
+    versioning-strategy: increase
+    labels:
+      - dependencies
+      - docs
+    groups:
+      docs-site:
+        patterns:
+          - "*"
+
+  # ── GitHub Actions ──
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+    # github-actions は default-days のみ対応
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 5
+    labels:
+      - ci
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  # ── Docker base image ──
+  - package-ecosystem: docker
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 5
+    labels:
+      - docker
