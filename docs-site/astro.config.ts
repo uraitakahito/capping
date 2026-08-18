@@ -32,10 +32,10 @@ export default defineConfig({
         { label: "Verification", slug: "verification" },
         { label: "Signing", slug: "signing" },
         { label: "Development", slug: "development" },
-        // The specification capping implements, and the reference server it is
-        // shaped like. Both are read often enough to belong in the nav.
+        // The specification capping implements. Read often enough to belong in
+        // the nav. BrowserHive's docs used to sit next to it, but they are no
+        // longer published on the web — that repo builds them locally now.
         { label: "wacz-auth 0.1.0 ↗", link: "https://specs.webrecorder.net/wacz-auth/0.1.0/" },
-        { label: "BrowserHive Docs ↗", link: "https://uraitakahito.github.io/browserhive/" },
       ],
     }),
   ],
