@@ -1,0 +1,53 @@
+name: release-version
+
+# The version has drifted from the tag twice. The first time three copies of the
+# string disagreed; that was fixed by collapsing them into src/version.ts. It
+# happened again anyway — v0.6.0, v0.6.1 and v0.6.2 all signed as
+# `capping/0.5.1` — because one hand-edited constant is still hand-edited.
+#
+# test/cli.test.ts already pins `--version` == package.json == SOFTWARE. What
+# nothing checked was whether any of them match the release. This does.
+#
+# It runs on the develop → main pull request and compares its title against
+# package.json. The title is the only place the intended version exists before
+# the tag is cut: the tag lands on the merge commit, which is after the last
+# moment anything can be stopped. Checking against the tag would report the
+# mistake once it is already permanent — capping writes this string into the
+# `software` field of every signature, and archives keep it.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  version-matches-title:
+    name: Release version matches package.json
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Compare PR title with package.json
+        env:
+          # Through the environment, not inline in the script: a PR title is
+          # attacker-controlled text and `${{ }}` would paste it into the shell.
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          case "$TITLE" in
+            "Release v"*) ;;
+            *)
+              echo "::error::release PR title must read 'Release vX.Y.Z', got: $TITLE"
+              exit 1
+              ;;
+          esac
+          want="${TITLE#Release v}"
+          have="$(node -p "require('./package.json').version")"
+          if [ "$want" != "$have" ]; then
+            echo "::error::title says $want, package.json says $have — bump package.json and src/version.ts, or fix the title"
+            exit 1
+          fi
+          echo "$want matches package.json"
