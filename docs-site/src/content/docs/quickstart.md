@@ -87,11 +87,20 @@ $ capping verify --file expired.json --root ./expired/insecure-dev-ca.crt
 not valid
 ```
 
-`--signer-days 0` issues an identity that is already past its validity. This is not an exotic case: signing certificates are deliberately short-lived, so by the time anyone verifies an archive, expiry is the *normal* state. `--allow-expired` is what a verifier reaches for once the timestamp has shown the signature predates the expiry — which is the entire reason the timestamp is there.
+`--signer-days 0` issues an identity that is already past its validity. This is not an exotic case: signing certificates are deliberately short-lived, so by the time anyone verifies an archive, expiry is the *normal* state.
+
+**A timestamp answers this on its own.** When the payload carries one, every certificate is judged as of the instant that token asserts — was it valid *when it signed* — rather than as of now, which it never is. The identity above has no timestamp, so there is nothing to anchor to and the check stays on the clock.
+
+```console
+$ capping verify --file signed-with-a-token.json --root ./insecure-dev-ca.crt
+  ok       chain      chain reaches a supplied trust root, as of the timestamp (2022-01-18T19:00:12.000Z)
+```
+
+`--allow-expired` remains for the case with no token: it stops asking about time altogether, which also accepts a certificate that had already expired when it signed. Reach for it only when you have established the signing date some other way.
 
 ```console
 $ capping verify --file expired.json --root ./expired/insecure-dev-ca.crt --allow-expired
-  ok       chain      chain reaches a supplied trust root
+  ok       chain      chain reaches a supplied trust root, validity window not checked
 ```
 
 ## As a service

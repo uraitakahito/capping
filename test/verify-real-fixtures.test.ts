@@ -52,12 +52,22 @@ describe("py-wacz's signed example", () => {
     expect(signedData.timestampCert).toBeDefined();
   });
 
+  /**
+   * The archive is from January 2022 and every certificate in it expired years
+   * ago. It verifies anyway, with no flag — because the token fixes when the
+   * signature was made, and that is the instant the check is judged against.
+   *
+   * This used to need `allowExpired: true`, which stops asking about time at
+   * all. Needing it here was the tell: an archive that outlives its certificate
+   * is the normal case, not the exception, and a verifier that can only say
+   * "expired" about it has answered the wrong question.
+   */
   it("verifies its signature and timestamp without any trust anchor", async () => {
     // Neither stage needs a root: one asks whether the signature matches the
     // key in the certificate, the other whether the token covers the signature.
     // Trust enters only at the chain stage.
     const signedData = await load("pywacz-signed.datapackage-digest.json");
-    const report = await verifySignedData(signedData, { allowExpired: true });
+    const report = await verifySignedData(signedData);
 
     expect(report.stages.signature.status).toBe("ok");
     expect(report.stages.timestamp.status).toBe("ok");
@@ -68,10 +78,24 @@ describe("py-wacz's signed example", () => {
     // The difference matters: "we did not check" must not read as "we checked
     // and it was bad".
     const signedData = await load("pywacz-signed.datapackage-digest.json");
-    const report = await verifySignedData(signedData, { allowExpired: true });
+    const report = await verifySignedData(signedData);
 
     expect(report.stages.chain.status).toBe("skipped");
     expect(report.valid).toBe(true);
+  });
+
+  /**
+   * The distinction the change turns on, on somebody else's bytes.
+   *
+   * `allowExpired` would also have passed this — by asking nothing about time.
+   * The anchor asks the question and gets a real answer, and says which instant
+   * it asked about.
+   */
+  it("names the instant it judged the timestamp against", async () => {
+    const signedData = await load("pywacz-signed.datapackage-digest.json");
+    const report = await verifySignedData(signedData);
+
+    expect(report.stages.timestamp.detail).toContain("2022-01-18");
   });
 });
 
@@ -80,7 +104,7 @@ describe("py-wacz's invalid signed example", () => {
     // Upstream calls this file invalid, and it is — but not because anything
     // was forged. Asserting the signature passes keeps the reason visible.
     const signedData = await load("pywacz-signed-invalid.datapackage-digest.json");
-    const report = await verifySignedData(signedData, { allowExpired: true });
+    const report = await verifySignedData(signedData);
 
     expect(report.stages.signature.status).toBe("ok");
     expect(report.stages.timestamp.status).toBe("ok");
