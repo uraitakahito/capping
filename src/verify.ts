@@ -46,15 +46,38 @@ export interface VerifyOptions {
   /** PEM roots to trust. Without them the chain stage cannot pass. */
   trustRoots?: string[];
   /**
-   * Accept an expired certificate.
+   * Skip the validity window entirely, for every certificate.
    *
-   * Signing certificates are deliberately short-lived, so by the time anyone
-   * verifies, expiry is the normal case; the timestamp is what shows the
-   * signature predates it. Off by default so the report stays honest.
+   * Rarely what you want now. When the payload carries a timestamp, the chain
+   * is checked as of the moment that token asserts, which is the question worth
+   * asking — was the certificate valid *when it signed*. This flag asks nothing
+   * about time at all, so it also accepts a certificate that had already
+   * expired when it signed. Reach for it only when there is no token to anchor
+   * to and you have established the signing date some other way.
    */
   allowExpired?: boolean;
   onCommand?: (commandLine: string) => void;
 }
+
+/**
+ * The moment to judge certificate validity against.
+ *
+ * `undefined` means "now", which is openssl's own default and the only honest
+ * answer when nothing establishes when the signature was made.
+ *
+ * A token's `genTime` is not proof — capping anchors the timestamp stage to the
+ * token's own last certificate, so a self-consistent forgery can claim any
+ * time. It is still the better anchor: the alternative for an expired
+ * certificate is `--allow-expired`, which asks nothing about time at all. This
+ * narrows that to one instant and puts it in the report where a reader sees it.
+ */
+const anchorTime = async (
+  signedData: SignedData,
+  options: VerifyOptions,
+): Promise<Date | undefined> => {
+  if (signedData.timeSignature === undefined) return undefined;
+  return timestampTime(signedData.timeSignature, options.onCommand);
+};
 
 const ok = (detail: string): StageResult => ({ status: "ok", detail });
 const failed = (detail: string): StageResult => ({ status: "failed", detail });
@@ -144,9 +167,10 @@ export async function verifySignedData(
     await writeFile(join(dir, "sig.der"), Buffer.from(signedData.signature, "base64"));
 
     const signature = await verifySignature(openssl);
-    const chainResult = await verifyChain(openssl, intermediates.length > 0, options);
+    const at = await anchorTime(signedData, options);
+    const chainResult = await verifyChain(openssl, intermediates.length > 0, options, at);
     const domain = await verifyDomain(openssl, signedData.domain);
-    const timestamp = await verifyTimestamp(openssl, dir, signedData, options);
+    const timestamp = await verifyTimestamp(openssl, dir, signedData, options, at);
 
     const stages = { signature, chain: chainResult, domain, timestamp };
     return {
@@ -182,6 +206,7 @@ async function verifyChain(
   openssl: Openssl,
   hasIntermediates: boolean,
   options: VerifyOptions,
+  at: Date | undefined,
 ): Promise<StageResult> {
   if ((options.trustRoots ?? []).length === 0) {
     // Saying "skipped" rather than "failed" keeps the two apart: nobody named a
@@ -190,14 +215,24 @@ async function verifyChain(
   }
   const argv = ["verify", "-CAfile", "roots.pem"];
   if (hasIntermediates) argv.push("-untrusted", "untrusted.pem");
-  if (options.allowExpired === true) argv.push("-no_check_time");
+
+  // Three answers to "valid when?", in the order they win. Appended, never
+  // inserted: `--explain` output is asserted on by prefix.
+  let asOf = "as of now";
+  if (options.allowExpired === true) {
+    argv.push("-no_check_time");
+    asOf = "validity window not checked";
+  } else if (at !== undefined) {
+    argv.push("-attime", String(Math.floor(at.getTime() / 1000)));
+    asOf = `as of the timestamp (${at.toISOString()})`;
+  }
   argv.push("leaf.pem");
 
   try {
     await openssl.run(...argv);
-    return ok("chain reaches a supplied trust root");
+    return ok(`chain reaches a supplied trust root, ${asOf}`);
   } catch (err) {
-    return failed(firstLine(err));
+    return failed(`${firstLine(err)} (${asOf})`);
   }
 }
 
@@ -220,6 +255,7 @@ async function verifyTimestamp(
   dir: string,
   signedData: SignedData,
   options: VerifyOptions,
+  at: Date | undefined,
 ): Promise<StageResult> {
   if (signedData.timeSignature === undefined) {
     return skipped("no timeSignature");
@@ -250,12 +286,23 @@ async function verifyTimestamp(
     // obvious way to be told you passed the wrong flag.
     const argv = ["ts", "-verify", "-data", "sig.b64", "-in", "ts.tst", "-CAfile", "ts-root.pem"];
     if (tsChain.length > 1) argv.push("-untrusted", "ts-leaf.pem");
-    if (options.allowExpired === true) argv.push("-no_check_time");
+    // The authority's own certificate expires like any other, and a token
+    // outlives it. Judging it as of the instant it asserts is what keeps an
+    // archive checkable afterwards; judging it as of now discards every archive
+    // that outlives its authority, which is the opposite of the point.
+    let asOf = "as of now";
+    if (options.allowExpired === true) {
+      argv.push("-no_check_time");
+      asOf = "validity window not checked";
+    } else if (at !== undefined) {
+      argv.push("-attime", String(Math.floor(at.getTime() / 1000)));
+      asOf = `as of ${at.toISOString()}`;
+    }
     // #endregion timestamp-stage
 
     const out = await openssl.text(...argv);
     return out.includes("Verification: OK")
-      ? ok("timestamp covers this signature")
+      ? ok(`timestamp covers this signature, ${asOf}`)
       : failed(out.trim());
   } catch (err) {
     return failed(firstLine(err));
