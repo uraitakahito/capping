@@ -30,6 +30,10 @@ The public key comes out of the leaf certificate; the signed bytes are the hash 
 
 `openssl verify -CAfile roots.pem -untrusted untrusted.pem leaf.pem`. The spec stores the whole chain glued into one `domainCert` string, but openssl wants the leaf and its issuers in separate files, so every consumer has to split on `-----BEGIN CERTIFICATE-----`.
 
+**Validity is judged as of the timestamp**, not as of now. When the payload carries a token, `-attime` pins the check to the instant it asserts, and the report says which instant that was. A signing certificate outlives its window long before anyone verifies; asking whether it is valid *today* answers a question nobody has. Without a token there is nothing to anchor to and the check stays on the clock.
+
+The token's `genTime` is not proof — this stage anchors the timestamp to the token's own last certificate, so a self-consistent forgery can claim any time. It is still the better anchor: the alternative is `--allow-expired`, which asks nothing about time at all.
+
 With no trust roots supplied, this stage is `skipped`. That is deliberate and it is not the same as failing.
 
 ### domain

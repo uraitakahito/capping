@@ -226,6 +226,54 @@ describe("signing against an external TSA", () => {
     expect(report.stages.timestamp.status).toBe("ok");
   });
 
+  /**
+   * The flag that carries the anchor, asserted on the command itself.
+   *
+   * A certificate that has *already* expired while still having signed inside
+   * its window cannot be built inside one test run — that is what the py-wacz
+   * fixtures are for (see verify-real-fixtures). What can be pinned here is
+   * that the instant reaches openssl at all, and that it is the token's, not
+   * the clock's.
+   */
+  it("hands the token's instant to the chain check", async () => {
+    const signedData = await sign(identity, { hash: HASH, tsaUrl: tsa.url });
+    const at = await timestampTime(signedData.timeSignature ?? "");
+    const commands: string[] = [];
+
+    await verifySignedData(signedData, {
+      trustRoots: [identity.rootCert],
+      onCommand: (line) => commands.push(line),
+    });
+
+    const epoch = String(Math.floor(at!.getTime() / 1000));
+    const verifyLine = commands.find((c) => c.includes("openssl verify"));
+    expect(verifyLine).toContain(`-attime ${epoch}`);
+  });
+
+  it("says which instant it judged the chain against", async () => {
+    const signedData = await sign(identity, { hash: HASH, tsaUrl: tsa.url });
+    const at = await timestampTime(signedData.timeSignature ?? "");
+
+    const report = await verifySignedData(signedData, { trustRoots: [identity.rootCert] });
+
+    expect(at).toBeInstanceOf(Date);
+    expect(report.stages.chain.detail).toContain(at!.toISOString());
+  });
+
+  /** No token, no anchor — the check stays where it was, on the clock. */
+  it("falls back to now when there is no token to anchor to", async () => {
+    const signedData = await sign(identity, { hash: HASH });
+    const commands: string[] = [];
+
+    const report = await verifySignedData(signedData, {
+      trustRoots: [identity.rootCert],
+      onCommand: (line) => commands.push(line),
+    });
+
+    expect(commands.find((c) => c.includes("openssl verify"))).not.toContain("-attime");
+    expect(report.stages.chain.detail).toContain("as of now");
+  });
+
   it("fails the signature rather than returning a half-built chain", async () => {
     // An authority that answers without its root leaves `timestampCert` with a
     // leaf and nothing to anchor it to. Every consumer that reads the archive

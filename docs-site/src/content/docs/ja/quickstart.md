@@ -89,11 +89,18 @@ not valid
 
 `--signer-days 0` は、発行時点で既に有効期限を過ぎた身元を作ります。これは特殊なケースではありません。署名用証明書は意図的に短命なので、誰かが検証する頃には期限切れなのが**通常の状態**です。
 
-`--allow-expired` は、タイムスタンプによって「署名が期限切れより前だった」ことが示された後に検証者が使うものです。タイムスタンプが存在する理由そのものです。
+**タイムスタンプがあれば、これは自動で解決します。** ペイロードがトークンを持つとき、証明書はすべて**そのトークンが主張する瞬間**で判定されます —— 「署名したときに有効だったか」であって、「今も有効か」（決してそうではない）ではありません。上の身元はタイムスタンプを持たないので、基準にできるものが無く、検査は時計のままです。
+
+```console
+$ capping verify --file signed-with-a-token.json --root ./insecure-dev-ca.crt
+  ok       chain      chain reaches a supplied trust root, as of the timestamp (2022-01-18T19:00:12.000Z)
+```
+
+`--allow-expired` はトークンの無い場合のために残っています。時刻を一切問わなくなるので、**署名した時点で既に失効していた証明書も通します**。署名日を別の手段で確かめたうえでのみ使ってください。
 
 ```console
 $ capping verify --file expired.json --root ./expired/insecure-dev-ca.crt --allow-expired
-  ok       chain      chain reaches a supplied trust root
+  ok       chain      chain reaches a supplied trust root, validity window not checked
 ```
 
 ## サービスとして動かす

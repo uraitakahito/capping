@@ -109,17 +109,24 @@ describe("capping verify", () => {
     expect(run.stdout).toMatch(/skipped\s+chain/);
   }, 60_000);
 
-  it("reads py-wacz's fixture, which needs --allow-expired to pass", async () => {
+  it("reads py-wacz's fixture, whose certificates expired years ago", async () => {
     const fixture = join(root, "test", "fixtures", "pywacz-signed.datapackage-digest.json");
 
-    // Signed in 2021 against a real Let's Encrypt certificate, so by now both it
-    // and the timestamp authority's certificate have expired. Strict is the
-    // honest default; the flag is what a verifier reaches for once a timestamp
-    // has shown the signature predates the expiry.
+    // Signed in January 2022 against a real Let's Encrypt certificate, so both
+    // it and the timestamp authority's certificate are long gone. It passes
+    // anyway, with no flag: the token fixes when the signature was made, and
+    // that is the instant the certificates are judged against.
+    //
+    // This used to require --allow-expired, and the reason it did is the reason
+    // the flag reads wrong now — it stops asking about time, where the token
+    // answers the question.
     const strict = await capping("verify", "--file", fixture);
-    expect(strict.code).toBe(1);
-    expect(strict.stdout).toMatch(/expired/i);
+    expect(strict.code).toBe(0);
+    expect(strict.stdout).toMatch(/ok\s+timestamp/);
+    expect(strict.stdout).toContain("2022-01-18");
 
+    // The flag still works, and still means something different: no time check
+    // at all, for a payload with no token to anchor to.
     const lenient = await capping("verify", "--file", fixture, "--allow-expired");
     expect(lenient.code).toBe(0);
     expect(lenient.stdout).toMatch(/ok\s+signature/);
