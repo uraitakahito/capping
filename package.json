@@ -28,7 +28,7 @@
   "//scripts": {
     "build": "Compile src/ to dist/ via tsconfig.build.json (which excludes test/). dist/cli.js is what `bin` points at, so this is what ships — test/cli.test.ts spawns it rather than importing the source, and would otherwise measure whatever dist/ happened to hold.",
     "typecheck": "Type-check everything including test/, without emitting. Separate from `build` because the build deliberately narrows to src/.",
-    "test": "Vitest, single run. Ordered deliberately: verify-real-fixtures runs the verifier against py-wacz's signed archives BEFORE anything here produces a signature, so a round trip that agreed with itself about the wrong format could not pass unnoticed.",
+    "test": "Vitest, single run. The safeguard against a round trip that agrees with itself about the wrong format is not test ordering — it is that verify-real-fixtures checks the verifier against py-wacz's signed archives, an oracle this package did not produce. (An earlier version of this note claimed the files were deliberately ordered; no such mechanism was ever configured, and the tests are independent, so order buys nothing.)",
     "test:watch": "Vitest in watch mode.",
     "lint": "ESLint with zero tolerance for warnings. --max-warnings 0 so a warning cannot accumulate into background noise.",
     "lint:fix": "ESLint with --fix.",
