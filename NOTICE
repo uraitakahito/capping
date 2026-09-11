@@ -1,8 +1,8 @@
-capping is released under the Unlicense; see LICENSE.
+wacz-signer is released under the Unlicense; see LICENSE.
 
 Two files under test/fixtures/ are not. They are signed archives taken from
 webrecorder/py-wacz, kept because they are the only signatures in this
-repository that capping did not produce itself:
+repository that wacz-signer did not produce itself:
 
   test/fixtures/pywacz-signed.datapackage-digest.json
   test/fixtures/pywacz-signed-invalid.datapackage-digest.json
@@ -12,7 +12,7 @@ Derived from:
   (wacz/tests/fixtures — signed with authsigner 0.3.0 in 2022)
 
 They are what makes the verifier measurable against something outside this
-project. Without them, capping's tests would only show that its signer and its
+project. Without them, wacz-signer's tests would only show that its signer and its
 verifier agree with each other, which they would do just as happily if both
 had misread the format.
 

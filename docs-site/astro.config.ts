@@ -4,14 +4,14 @@ import { satteri } from "@astrojs/markdown-satteri";
 import mdastCodeRegion from "./src/plugins/mdast-code-region";
 import hastRebaseLinks from "./src/plugins/hast-rebase-links";
 
-const BASE = "/capping";
+const BASE = "/wacz-signer";
 
 export default defineConfig({
   site: "https://uraitakahito.github.io",
   base: BASE,
   integrations: [
     starlight({
-      title: "capping Docs",
+      title: "wacz-signer Docs",
       // Keep code tokens inside reference tables on one line; the openssl
       // command column is long enough to wrap badly.
       customCss: ["./src/styles/tables.css"],
@@ -24,7 +24,7 @@ export default defineConfig({
         ja: { label: "日本語", lang: "ja" },
       },
       social: [
-        { icon: "github", label: "GitHub", href: "https://github.com/uraitakahito/capping" },
+        { icon: "github", label: "GitHub", href: "https://github.com/uraitakahito/wacz-signer" },
       ],
       sidebar: [
         { label: "Overview", slug: "index" },
@@ -32,7 +32,7 @@ export default defineConfig({
         { label: "Verification", slug: "verification" },
         { label: "Signing", slug: "signing" },
         { label: "Development", slug: "development" },
-        // The specification capping implements. Read often enough to belong in
+        // The specification signer implements. Read often enough to belong in
         // the nav. BrowserHive's docs used to sit next to it, but they are no
         // longer published on the web — that repo builds them locally now.
         { label: "wacz-auth 0.1.0 ↗", link: "https://specs.webrecorder.net/wacz-auth/0.1.0/" },

@@ -4,8 +4,8 @@
  * These two files come from py-wacz and are the only independent check
  * available: they were produced by the reference implementation, so a verifier
  * that reads them correctly has understood the format, and one that does not
- * has not — regardless of whether it agrees with a signature capping made
- * itself. Written before capping could sign anything, for that reason.
+ * has not — regardless of whether it agrees with a signature signer made
+ * itself. Written before signer could sign anything, for that reason.
  *
  * The pair is chosen well by upstream. Both signatures are cryptographically
  * sound; they differ only in whether the certificate chain reaches a public

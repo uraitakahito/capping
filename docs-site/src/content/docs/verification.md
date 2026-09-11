@@ -3,7 +3,7 @@ title: Verification
 description: The four stages, what each one asks, and why they are reported separately.
 ---
 
-wacz-auth describes verification as four checks. capping reports them separately rather than collapsing them into one boolean, because the answers mean different things.
+wacz-auth describes verification as four checks. wacz-signer reports them separately rather than collapsing them into one boolean, because the answers mean different things.
 
 ```ts file="src/verify.ts#VerifyReport"
 ```

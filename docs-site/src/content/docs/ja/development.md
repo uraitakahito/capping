@@ -18,8 +18,8 @@ $ pnpm run check   # typecheck・lint・test
 
 | ファイル | 何を担保するか |
 | --- | --- |
-| `test/verify-real-fixtures.test.ts` | 検証器が、**capping が作ったのではない**署名を読めること |
-| `test/round-trip.test.ts` | capping 自身の署名が、その検証器を通ること |
+| `test/verify-real-fixtures.test.ts` | 検証器が、**wacz-signer が作ったのではない**署名を読めること |
+| `test/round-trip.test.ts` | wacz-signer 自身の署名が、その検証器を通ること |
 | `test/cli.test.ts` | 出荷される `dist/cli.js` の挙動（引数・出力先・終了コード） |
 | `test/server.test.ts` | `/sign` がトークン無しの呼び出しを拒むこと、`/verify` が正直に答えること |
 
@@ -27,7 +27,7 @@ $ pnpm run check   # typecheck・lint・test
 
 逆順にすると、往復テストが示すのは「2 つの半分が互いに一致している」ことだけになります。両方が同じ誤読を共有していても、機嫌よく、永久に通り続けます。
 
-この順序はすぐに元を取りました。[Signing](/signing/) に書いた `-token_in` の間違いを捕まえたのがこれです。本パッケージの実装計画は「`timeSignature` には裸のトークンが入っており `-token_in` が要る」と断言していました。どちらも誤りでした。検証器が capping 自身の出力より先に実物と出会っていたため、この誤りは「既知の正解に対する ASN.1 エラー」として表面化しました。もし逆順なら、間違った形式について自分同士で意見が一致した往復テストが、静かに通っていたはずです。
+この順序はすぐに元を取りました。[Signing](/signing/) に書いた `-token_in` の間違いを捕まえたのがこれです。本パッケージの実装計画は「`timeSignature` には裸のトークンが入っており `-token_in` が要る」と断言していました。どちらも誤りでした。検証器が wacz-signer 自身の出力より先に実物と出会っていたため、この誤りは「既知の正解に対する ASN.1 エラー」として表面化しました。もし逆順なら、間違った形式について自分同士で意見が一致した往復テストが、静かに通っていたはずです。
 
 ## 失敗系
 
@@ -41,7 +41,7 @@ $ pnpm run check   # typecheck・lint・test
 
 ## 出荷されるものをテストする
 
-`test/cli.test.ts` はモジュールを import するのではなく `dist/cli.js` を起動します。そのため先にビルドします。数秒のコストと引き換えに、「出荷したものがテストしたものである」という確証が得られます。`bin` が指しているのは `dist/cli.js` であり、ソースだけを見るテストは誰も動かさないものを測っていることになるからです。そういうテストは、`capping verify` が壊れたアーカイブに 0 を返している間もずっと通り続けます。
+`test/cli.test.ts` はモジュールを import するのではなく `dist/cli.js` を起動します。そのため先にビルドします。数秒のコストと引き換えに、「出荷したものがテストしたものである」という確証が得られます。`bin` が指しているのは `dist/cli.js` であり、ソースだけを見るテストは誰も動かさないものを測っていることになるからです。そういうテストは、`wacz-signer verify` が壊れたアーカイブに 0 を返している間もずっと通り続けます。
 
 CI が test より先に build を走らせるのも同じ理由です。
 
@@ -49,7 +49,7 @@ CI が test より先に build を走らせるのも同じ理由です。
 
 CI は何よりも先に `openssl version -a` を印字します。
 
-capping は暗号処理を自前で持たないので、openssl は**コミット無しで答えを変えうる唯一の外部要因**です。理由の見えないテスト失敗が起きたとき、最初に疑うべき行がこれです。
+wacz-signer は暗号処理を自前で持たないので、openssl は**コミット無しで答えを変えうる唯一の外部要因**です。理由の見えないテスト失敗が起きたとき、最初に疑うべき行がこれです。
 
 ## ドキュメント
 
@@ -60,4 +60,4 @@ $ pnpm run site:build    # サイトをビルド
 $ pnpm run site:check    # ビルド + ドキュメント内の参照が全て解決することを検証
 ```
 
-保証が欲しいときは `site:build` ではなく `site:check` を使ってください。ここではビルド単体は強制になりません。region が欠けていれば抽出器は例外を投げますが、それでビルドが止まるかはページの拡張子次第です。`.mdx` なら例外が vite 経由で表面化してビルドが落ちる一方、`.md` —— capping は全ページこちら —— では Starlight の docs loader が捕まえて `[ERROR] [starlight-docs-loader] Error rendering …` と記録し、そのまま終了コード 0 で完了します。非ゼロで落ちるのは `scripts/check-doc-refs.mjs` の方で、CI が走らせているのもこちらです。
+保証が欲しいときは `site:build` ではなく `site:check` を使ってください。ここではビルド単体は強制になりません。region が欠けていれば抽出器は例外を投げますが、それでビルドが止まるかはページの拡張子次第です。`.mdx` なら例外が vite 経由で表面化してビルドが落ちる一方、`.md` —— wacz-signer は全ページこちら —— では Starlight の docs loader が捕まえて `[ERROR] [starlight-docs-loader] Error rendering …` と記録し、そのまま終了コード 0 で完了します。非ゼロで落ちるのは `scripts/check-doc-refs.mjs` の方で、CI が走らせているのもこちらです。

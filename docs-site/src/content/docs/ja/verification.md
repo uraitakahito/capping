@@ -3,7 +3,7 @@ title: Verification
 description: 4 段階が何を問うているか、なぜ分けて報告するのか。
 ---
 
-wacz-auth は検証を 4 つの確認として記述しています。capping はそれを 1 つの真偽値にまとめず、段階ごとに報告します。答えの意味が違うからです。
+wacz-auth は検証を 4 つの確認として記述しています。wacz-signer はそれを 1 つの真偽値にまとめず、段階ごとに報告します。答えの意味が違うからです。
 
 ```ts file="src/verify.ts#VerifyReport"
 ```

@@ -1,16 +1,16 @@
 ---
-title: capping
+title: wacz-signer
 description: A local wacz-auth signing stand-in, driven entirely by openssl.
 ---
 
-capping is a local stand-in for a [wacz-auth](https://specs.webrecorder.net/wacz-auth/0.1.0/) signing service. It issues its own CA and signing certificate, asks an [RFC 3161](https://www.rfc-editor.org/rfc/rfc3161) authority of your choosing for the timestamp, and produces the `signedData` that goes in a WACZ's `datapackage-digest.json`.
+wacz-signer is a local stand-in for a [wacz-auth](https://specs.webrecorder.net/wacz-auth/0.1.0/) signing service. It issues its own CA and signing certificate, asks an [RFC 3161](https://www.rfc-editor.org/rfc/rfc3161) authority of your choosing for the timestamp, and produces the `signedData` that goes in a WACZ's `datapackage-digest.json`.
 
-**Every cryptographic step is an `openssl` invocation.** capping contributes JSON, temp files and process handling — nothing more. Nothing cryptographic comes from npm; the one runtime dependency is [commander](https://www.npmjs.com/package/commander), which parses the command line.
+**Every cryptographic step is an `openssl` invocation.** wacz-signer contributes JSON, temp files and process handling — nothing more. Nothing cryptographic comes from npm; the one runtime dependency is [commander](https://www.npmjs.com/package/commander), which parses the command line.
 
 This is what makes the results checkable: run any command with `--explain` and it prints the exact openssl lines it used, so a result you distrust can be reproduced by hand.
 
 ```console
-$ capping verify --file datapackage-digest.json --root insecure-dev-ca.crt --explain
+$ wacz-signer verify --file datapackage-digest.json --root insecure-dev-ca.crt --explain
 + openssl x509 -in leaf.pem -pubkey -noout -out pub.pem
 + openssl dgst -sha256 -verify pub.pem -signature sig.der hash.txt
 + openssl verify -CAfile roots.pem -untrusted untrusted.pem leaf.pem

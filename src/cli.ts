@@ -39,7 +39,7 @@ const explainer = (opts: GlobalOpts): ((cmd: string) => void) | undefined =>
  * Days accept 0 and negative values.
  *
  * An already-expired identity is the state every real signing certificate
- * reaches, and being able to produce one on purpose is why capping runs its own
+ * reaches, and being able to produce one on purpose is why signer runs its own
  * CA at all. Rejecting anything below 1 here would remove the case the tool
  * exists for.
  */
@@ -74,7 +74,7 @@ async function cmdInit(opts: {
   stdout.write(`identity for ${opts.domain} in ${identity.dir}\n`);
   stdout.write(`  signing certificate  ${p.signerCert}\n`);
   stdout.write(`  trust root           ${p.caCert}\n`);
-  stdout.write(`  timestamps           pass --tsa-url to sign; capping issues none\n`);
+  stdout.write(`  timestamps           pass --tsa-url to sign; wacz-signer issues none\n`);
 }
 
 async function cmdSign(opts: {
@@ -96,7 +96,7 @@ async function cmdSign(opts: {
   } else if (opts.file !== undefined) {
     hash = await hashFile(opts.file, ...(onCommand === undefined ? [] : [onCommand]));
   } else {
-    stderr.write("capping: one of --hash or --file is required\n");
+    stderr.write("wacz-signer: one of --hash or --file is required\n");
     exit(2);
   }
 
@@ -128,7 +128,7 @@ async function cmdVerify(opts: {
       ? parseDatapackageDigest(parsed).signedData
       : parseSignedData(parsed);
   if (signedData === undefined) {
-    stderr.write(`capping: ${opts.file} has no signedData\n`);
+    stderr.write(`wacz-signer: ${opts.file} has no signedData\n`);
     exit(1);
   }
 
@@ -169,7 +169,7 @@ async function cmdServe(opts: {
     opts.host,
   );
 
-  stdout.write(`capping serving ${identity.domain} on http://${opts.host}:${String(opts.port)}\n`);
+  stdout.write(`wacz-signer serving ${identity.domain} on http://${opts.host}:${String(opts.port)}\n`);
   stdout.write(`  POST /sign    ${opts.token === undefined ? "(open)" : "(bearer token required)"}\n`);
   stdout.write(`  POST /verify\n`);
   // The process stays up on the listening socket; nothing more to do here.
@@ -185,7 +185,7 @@ function printReport(report: VerifyReport): void {
 }
 
 const program = new Command()
-  .name("capping")
+  .name("wacz-signer")
   .description(
     "Local wacz-auth signing, driven by openssl.\n" +
       "Every cryptographic step is an openssl invocation; --explain prints them.",
@@ -210,7 +210,7 @@ program
 program
   .command("sign")
   .description("produce a datapackage-digest.json for a hash")
-  .requiredOption("--dir <dir>", "identity directory made by `capping init`")
+  .requiredOption("--dir <dir>", "identity directory made by `wacz-signer init`")
   .option("--hash <sha256:hex>", "the hash to sign, exactly as it appears in datapackage.json")
   .option("--file <path>", "hash this file instead of passing --hash")
   .option("--out <path>", "write here instead of stdout")
@@ -242,7 +242,7 @@ program
 program
   .command("serve")
   .description("an authsign-shaped HTTP service: POST /sign and POST /verify")
-  .requiredOption("--dir <dir>", "identity directory made by `capping init`")
+  .requiredOption("--dir <dir>", "identity directory made by `wacz-signer init`")
   .option("--port <n>", "port to listen on", (v) => Number(v), 8080)
   .option("--host <host>", "address to bind. Use 0.0.0.0 inside a container", "127.0.0.1")
   .option(
@@ -262,7 +262,7 @@ program
  * Exit codes are part of a CLI's contract, so they are mapped rather than
  * inherited.
  *
- * capping has always answered a usage error with 2 — the conventional code for
+ * signer has always answered a usage error with 2 — the conventional code for
  * "you invoked me wrongly" — and a bare invocation with 0 and the usage text on
  * stdout. commander answers 1 to all of it and writes the help to stderr. A
  * script keying on either would break on a change that was supposed to be about

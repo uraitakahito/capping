@@ -1,4 +1,4 @@
-# capping — local wacz-auth signing service.
+# wacz-signer — local wacz-auth signing service.
 #
 # Multi-stage: build TypeScript in one image, ship dist/ plus its runtime
 # dependencies and openssl in the next.
@@ -19,7 +19,7 @@ RUN pnpm run build
 # The production tree, built in a stage of its own from nothing.
 #
 # Not `pnpm deploy`, which BrowserHive uses: that selects a project out of a
-# workspace, and capping's pnpm-workspace.yaml declares no packages — it exists
+# workspace, and wacz-signer's pnpm-workspace.yaml declares no packages — it exists
 # only for allowBuilds and enablePrePostScripts, so `deploy` stops with
 # ERR_PNPM_NOTHING_TO_DEPLOY.
 #
@@ -45,7 +45,7 @@ ENV NODE_ENV=production
 #   $ container run --rm node:24-bookworm-slim command -v openssl
 #   sh: 1: openssl: not found
 #
-# Node links against libssl, which is a different thing. capping shells out for
+# Node links against libssl, which is a different thing. wacz-signer shells out for
 # every cryptographic step, so without this package the image builds cleanly and
 # then fails on the first request.
 RUN apt-get update \
@@ -57,7 +57,7 @@ COPY --from=build /app/dist ./dist
 COPY package.json ./
 
 # The identity is mounted, not baked. Generating one at startup would give a
-# different CA on every boot, which makes `capping verify --root` impossible to
+# different CA on every boot, which makes `wacz-signer verify --root` impossible to
 # write down — and being able to write it down is the point of a dev CA.
 VOLUME ["/id"]
 

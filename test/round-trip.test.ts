@@ -6,7 +6,7 @@
  * each other and nothing more — they could share a misreading of the format and
  * still pass. The order the work was done in is what makes this test evidence.
  *
- * The failure cases are the reason capping issues its own certificates. None of
+ * The failure cases are the reason signer issues its own certificates. None of
  * them can be arranged against a public CA or a public timestamp authority.
  */
 import { mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
@@ -25,7 +25,7 @@ let dir: string;
 let identity: Identity;
 
 beforeAll(async () => {
-  dir = await mkdtemp(join(tmpdir(), "capping-test-"));
+  dir = await mkdtemp(join(tmpdir(), "wacz-signer-test-"));
   identity = await initIdentity({ dir: join(dir, "id"), domain: "sign.dev.local" });
 }, 120_000);
 
@@ -33,7 +33,7 @@ afterAll(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-describe("a signature capping made", () => {
+describe("a signature wacz-signer made", () => {
   it("passes every stage it can reach against its own roots", async () => {
     const signedData = await sign(identity, { hash: HASH });
     const report = await verifySignedData(signedData, {
@@ -43,7 +43,7 @@ describe("a signature capping made", () => {
     expect(report.stages.signature.status).toBe("ok");
     expect(report.stages.chain.status).toBe("ok");
     expect(report.stages.domain.status).toBe("ok");
-    // Skipped rather than ok: capping no longer issues timestamps, so without
+    // Skipped rather than ok: signer no longer issues timestamps, so without
     // `--tsa-url` there is nothing here to check. See remote-tsa.test.ts for
     // the stage passing against an authority.
     expect(report.stages.timestamp.status).toBe("skipped");

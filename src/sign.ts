@@ -95,7 +95,7 @@ export async function sign(identity: Identity, options: SignOptions): Promise<Si
       hash: options.hash,
       created: options.created ?? new Date().toISOString(),
       software: options.software ?? SOFTWARE,
-      // The wacz-auth spec version, which is not capping's — it moves when the
+      // The wacz-auth spec version, which is not signer's — it moves when the
       // spec does, not when this package does.
       version: "0.1.0",
       signature,
@@ -112,7 +112,7 @@ export async function sign(identity: Identity, options: SignOptions): Promise<Si
  *
  * Building the request stays an openssl invocation: `ts -query` is a pure
  * transformation that needs no key and no configuration. What was dropped is
- * answering it, which capping had no business doing.
+ * answering it, which signer had no business doing.
  */
 async function requestTimestamp(
   openssl: Openssl,

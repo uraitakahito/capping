@@ -7,11 +7,11 @@
 // 既に base-aware なリンクは二重付与しない。
 //
 // フロントマター (hero.actions.link 等) はこの pipeline を通らない。木に来るのは
-// 本文だけなので、そちらは /capping/page/ と直接書く。
+// 本文だけなので、そちらは /signer/page/ と直接書く。
 import { fileURLToPath } from "node:url";
 import { defineHastPlugin } from "satteri";
 
-const BASE = "/capping";
+const BASE = "/wacz-signer";
 
 export default defineHastPlugin({
   name: "rebase-links",

@@ -3,7 +3,7 @@ title: Quickstart
 description: Issue an identity, sign a datapackage.json, and verify the result.
 ---
 
-capping needs `openssl` on `PATH` and Node 24. Nothing else.
+wacz-signer needs `openssl` on `PATH` and Node 24. Nothing else.
 
 ```console
 $ openssl version
@@ -13,23 +13,23 @@ OpenSSL 3.6.3 9 Jun 2026 (Library: OpenSSL 3.6.3 9 Jun 2026)
 ## 1. Issue an identity
 
 ```console
-$ capping init --dir ./id --domain sign.dev.local
+$ wacz-signer init --dir ./id --domain sign.dev.local
 identity for sign.dev.local in ./id
   signing certificate  ./id/insecure-dev-signer.crt
   trust root           ./id/insecure-dev-ca.crt
-  timestamps           pass --tsa-url to sign; capping issues none
+  timestamps           pass --tsa-url to sign; wacz-signer issues none
 ```
 
 The `insecure-dev-` in every filename is not decoration. These keys are **safe to leak**: the CA reaches no trust store, and the certificates sign nothing anyone trusts. Commit the identity directory, mount it read-only, hand it around. A file called `signer.key` says none of that, and someone who finds one in a repository or a log **starts responding to an incident that did not happen**.
 
-capping issues no timestamps of its own. It used to, and the stand-in that did restarted its serial number at `01` for every signature — RFC 3161 says serials MUST be unique per authority, so what came out looked like a timestamp and was not one. Timestamping is now somebody else's job, named by `--tsa-url`.
+wacz-signer issues no timestamps of its own. It used to, and the stand-in that did restarted its serial number at `01` for every signature — RFC 3161 says serials MUST be unique per authority, so what came out looked like a timestamp and was not one. Timestamping is now somebody else's job, named by `--tsa-url`.
 
 The signing key is ECDSA P-256, matching what the reference implementation uses. The certificate carries `subjectAltName=DNS:<domain>`, because the domain stage checks names the way a TLS client does rather than reading the CN by hand.
 
 ## 2. Sign
 
 ```console
-$ capping sign --dir ./id --file datapackage.json --out datapackage-digest.json \
+$ wacz-signer sign --dir ./id --file datapackage.json --out datapackage-digest.json \
     --tsa-url http://localhost:3004/api/v1/timestamp
 ```
 
@@ -46,7 +46,7 @@ The result is the file that belongs at the WACZ root:
   "signedData": {
     "hash": "sha256:128e81a6…",
     "created": "2026-08-01T13:59:39.504Z",
-    "software": "capping/0.3.0",
+    "software": "wacz-signer/0.3.0",
     "version": "0.1.0",
     "signature": "MEQCIGS0Ydsd…",
     "domain": "sign.dev.local",
@@ -60,7 +60,7 @@ The result is the file that belongs at the WACZ root:
 ## 3. Verify
 
 ```console
-$ capping verify --file datapackage-digest.json --root ./id/insecure-dev-ca.crt
+$ wacz-signer verify --file datapackage-digest.json --root ./id/insecure-dev-ca.crt
   ok       signature  signature matches the hash under the certificate's key
   ok       chain      chain reaches a supplied trust root
   ok       domain     certificate is valid for sign.dev.local
@@ -76,9 +76,9 @@ Leave out `--root` and the chain stage reports `skipped` rather than `failed`. N
 ## The failure you should try first
 
 ```console
-$ capping init --dir ./expired --domain sign.dev.local --signer-days 0
-$ capping sign --dir ./expired --hash sha256:3dd086a0… --out expired.json
-$ capping verify --file expired.json --root ./expired/insecure-dev-ca.crt
+$ wacz-signer init --dir ./expired --domain sign.dev.local --signer-days 0
+$ wacz-signer sign --dir ./expired --hash sha256:3dd086a0… --out expired.json
+$ wacz-signer verify --file expired.json --root ./expired/insecure-dev-ca.crt
   ok       signature  signature matches the hash under the certificate's key
   FAILED   chain      error 10 at 0 depth lookup: certificate has expired
   ok       domain     certificate is valid for sign.dev.local
@@ -92,22 +92,22 @@ not valid
 **A timestamp answers this on its own.** When the payload carries one, every certificate is judged as of the instant that token asserts — was it valid *when it signed* — rather than as of now, which it never is. The identity above has no timestamp, so there is nothing to anchor to and the check stays on the clock.
 
 ```console
-$ capping verify --file signed-with-a-token.json --root ./insecure-dev-ca.crt
+$ wacz-signer verify --file signed-with-a-token.json --root ./insecure-dev-ca.crt
   ok       chain      chain reaches a supplied trust root, as of the timestamp (2022-01-18T19:00:12.000Z)
 ```
 
 `--allow-expired` remains for the case with no token: it stops asking about time altogether, which also accepts a certificate that had already expired when it signed. Reach for it only when you have established the signing date some other way.
 
 ```console
-$ capping verify --file expired.json --root ./expired/insecure-dev-ca.crt --allow-expired
+$ wacz-signer verify --file expired.json --root ./expired/insecure-dev-ca.crt --allow-expired
   ok       chain      chain reaches a supplied trust root, validity window not checked
 ```
 
 ## As a service
 
 ```console
-$ capping serve --dir ./id --port 8080 --token "$CAPPING_TOKEN"
-capping serving sign.dev.local on http://127.0.0.1:8080
+$ wacz-signer serve --dir ./id --port 8080 --token "$WACZ_SIGNER_TOKEN"
+wacz-signer serving sign.dev.local on http://127.0.0.1:8080
   POST /sign    (bearer token required)
   POST /verify
 ```
@@ -116,7 +116,7 @@ Shaped like [authsign](https://github.com/webrecorder/authsign):
 
 ```console
 $ curl -s -X POST http://127.0.0.1:8080/sign \
-    -H "authorization: Bearer $CAPPING_TOKEN" \
+    -H "authorization: Bearer $WACZ_SIGNER_TOKEN" \
     -H 'content-type: application/json' \
     -d '{"hash":"sha256:128e81a6…"}' > signed.json
 

@@ -65,7 +65,7 @@ export interface VerifyOptions {
  * `undefined` means "now", which is openssl's own default and the only honest
  * answer when nothing establishes when the signature was made.
  *
- * A token's `genTime` is not proof — capping anchors the timestamp stage to the
+ * A token's `genTime` is not proof — wacz-signer anchors the timestamp stage to the
  * token's own last certificate, so a self-consistent forgery can claim any
  * time. It is still the better anchor: the alternative for an expired
  * certificate is `--allow-expired`, which asks nothing about time at all. This
