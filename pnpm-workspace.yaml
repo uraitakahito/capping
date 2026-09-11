@@ -6,15 +6,15 @@
 #   unrs-resolver  — eslint-plugin-import-x が使う Rust 実装の path resolver。
 #                    native bindings の link が要る
 #
-# BrowserHive はここに puppeteer も並べているが、capping は Chromium を使わない
-# ので無い。capping の実行時依存は openssl 1 つで、npm の依存はすべて
+# BrowserHive はここに puppeteer も並べているが、wacz-signer は Chromium を使わない
+# ので無い。wacz-signer の実行時依存は openssl 1 つで、npm の依存はすべて
 # devDependencies。
 allowBuilds:
   esbuild: true
   unrs-resolver: true
 
 # npm は pre<script> / post<script> を自動実行するが、pnpm は既定でしない。
-# capping には現時点で pre/post script が 1 つも無いので、この設定は今日は
+# wacz-signer には現時点で pre/post script が 1 つも無いので、この設定は今日は
 # 何も変えない。それでも書いてあるのは、これが移行だからで —— 将来 prebuild
 # などを足したときに「npm では走っていたものが pnpm では黙って走らない」という
 # 差分を持ち込まないため。meadow は実際に prebuild / pretypecheck / pretest /

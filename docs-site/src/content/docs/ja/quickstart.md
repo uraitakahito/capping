@@ -13,23 +13,23 @@ OpenSSL 3.6.3 9 Jun 2026 (Library: OpenSSL 3.6.3 9 Jun 2026)
 ## 1. 身元を発行する
 
 ```console
-$ capping init --dir ./id --domain sign.dev.local
+$ wacz-signer init --dir ./id --domain sign.dev.local
 identity for sign.dev.local in ./id
   signing certificate  ./id/insecure-dev-signer.crt
   trust root           ./id/insecure-dev-ca.crt
-  timestamps           pass --tsa-url to sign; capping issues none
+  timestamps           pass --tsa-url to sign; wacz-signer issues none
 ```
 
 ファイル名の `insecure-dev-` は飾りではありません。ここで作られる鍵は**漏れても困らない**ものです —— この CA はどの信頼ストアにも入らず、証明書は誰も信用していないものに署名します。identity ディレクトリごとコミットして構いませんし、読み取り専用でマウントして配っても構いません。`signer.key` という名前ではそれが伝わらず、リポジトリやログの中で見つけた人が**起きていない事故の対応を始めてしまいます**。
 
-capping はタイムスタンプを自分では発行しません。以前は発行していましたが、その代役は**署名のたびにシリアル番号を `01` に戻していました** —— RFC 3161 はシリアルが認証局ごとに一意で**なければならない**と定めているので、出てきたものはタイムスタンプに見えてタイムスタンプではありませんでした。時刻の付与は `--tsa-url` で指す別の当事者の仕事になりました。
+wacz-signer はタイムスタンプを自分では発行しません。以前は発行していましたが、その代役は**署名のたびにシリアル番号を `01` に戻していました** —— RFC 3161 はシリアルが認証局ごとに一意で**なければならない**と定めているので、出てきたものはタイムスタンプに見えてタイムスタンプではありませんでした。時刻の付与は `--tsa-url` で指す別の当事者の仕事になりました。
 
 署名鍵は ECDSA P-256 で、リファレンス実装と同じです。証明書には `subjectAltName=DNS:<domain>` を入れます。domain 段階は CN を手で読むのではなく、TLS クライアントと同じ規則で名前を照合するからです。
 
 ## 2. 署名する
 
 ```console
-$ capping sign --dir ./id --file datapackage.json --out datapackage-digest.json \
+$ wacz-signer sign --dir ./id --file datapackage.json --out datapackage-digest.json \
     --tsa-url http://localhost:3004/api/v1/timestamp
 ```
 
@@ -46,7 +46,7 @@ $ capping sign --dir ./id --file datapackage.json --out datapackage-digest.json 
   "signedData": {
     "hash": "sha256:128e81a6…",
     "created": "2026-08-01T13:59:39.504Z",
-    "software": "capping/0.3.0",
+    "software": "wacz-signer/0.3.0",
     "version": "0.1.0",
     "signature": "MEQCIGS0Ydsd…",
     "domain": "sign.dev.local",
@@ -60,7 +60,7 @@ $ capping sign --dir ./id --file datapackage.json --out datapackage-digest.json 
 ## 3. 検証する
 
 ```console
-$ capping verify --file datapackage-digest.json --root ./id/insecure-dev-ca.crt
+$ wacz-signer verify --file datapackage-digest.json --root ./id/insecure-dev-ca.crt
   ok       signature  signature matches the hash under the certificate's key
   ok       chain      chain reaches a supplied trust root
   ok       domain     certificate is valid for sign.dev.local
@@ -76,9 +76,9 @@ valid
 ## 最初に試すべき失敗
 
 ```console
-$ capping init --dir ./expired --domain sign.dev.local --signer-days 0
-$ capping sign --dir ./expired --hash sha256:3dd086a0… --out expired.json
-$ capping verify --file expired.json --root ./expired/insecure-dev-ca.crt
+$ wacz-signer init --dir ./expired --domain sign.dev.local --signer-days 0
+$ wacz-signer sign --dir ./expired --hash sha256:3dd086a0… --out expired.json
+$ wacz-signer verify --file expired.json --root ./expired/insecure-dev-ca.crt
   ok       signature  signature matches the hash under the certificate's key
   FAILED   chain      error 10 at 0 depth lookup: certificate has expired
   ok       domain     certificate is valid for sign.dev.local
@@ -92,22 +92,22 @@ not valid
 **タイムスタンプがあれば、これは自動で解決します。** ペイロードがトークンを持つとき、証明書はすべて**そのトークンが主張する瞬間**で判定されます —— 「署名したときに有効だったか」であって、「今も有効か」（決してそうではない）ではありません。上の身元はタイムスタンプを持たないので、基準にできるものが無く、検査は時計のままです。
 
 ```console
-$ capping verify --file signed-with-a-token.json --root ./insecure-dev-ca.crt
+$ wacz-signer verify --file signed-with-a-token.json --root ./insecure-dev-ca.crt
   ok       chain      chain reaches a supplied trust root, as of the timestamp (2022-01-18T19:00:12.000Z)
 ```
 
 `--allow-expired` はトークンの無い場合のために残っています。時刻を一切問わなくなるので、**署名した時点で既に失効していた証明書も通します**。署名日を別の手段で確かめたうえでのみ使ってください。
 
 ```console
-$ capping verify --file expired.json --root ./expired/insecure-dev-ca.crt --allow-expired
+$ wacz-signer verify --file expired.json --root ./expired/insecure-dev-ca.crt --allow-expired
   ok       chain      chain reaches a supplied trust root, validity window not checked
 ```
 
 ## サービスとして動かす
 
 ```console
-$ capping serve --dir ./id --port 8080 --token "$CAPPING_TOKEN"
-capping serving sign.dev.local on http://127.0.0.1:8080
+$ wacz-signer serve --dir ./id --port 8080 --token "$WACZ_SIGNER_TOKEN"
+wacz-signer serving sign.dev.local on http://127.0.0.1:8080
   POST /sign    (bearer token required)
   POST /verify
 ```
@@ -116,7 +116,7 @@ capping serving sign.dev.local on http://127.0.0.1:8080
 
 ```console
 $ curl -s -X POST http://127.0.0.1:8080/sign \
-    -H "authorization: Bearer $CAPPING_TOKEN" \
+    -H "authorization: Bearer $WACZ_SIGNER_TOKEN" \
     -H 'content-type: application/json' \
     -d '{"hash":"sha256:128e81a6…"}' > signed.json
 

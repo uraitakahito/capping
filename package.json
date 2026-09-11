@@ -3,7 +3,7 @@
     "Discussion on how to write comments in package.json:",
     "https://stackoverflow.com/questions/14221579/how-do-i-add-comments-to-package-json-for-npm-install"
   ],
-  "name": "capping",
+  "name": "wacz-signer",
   "version": "0.7.0",
   "description": "Local wacz-auth signing stand-in — a private CA, an RFC 3161 timestamp authority, and a signer, all driven by openssl.",
   "type": "module",
@@ -15,7 +15,7 @@
   },
   "//bin": "The CLI. Points at dist/, so `pnpm run build` has to have run — test/cli.test.ts builds first for exactly this reason.",
   "bin": {
-    "capping": "./dist/cli.js"
+    "wacz-signer": "./dist/cli.js"
   },
   "//files": [
     "dist/ only. LICENSE, package.json and README.md are included automatically.",
@@ -63,7 +63,7 @@
   "license": "The Unlicense",
   "//devDependencies": {
     "@eslint/js": "ESLint's own recommended rule set, consumed by eslint.config.mjs.",
-    "@types/node": "Node type definitions. capping is Node-only — there is no browser code here.",
+    "@types/node": "Node type definitions. wacz-signer is Node-only — there is no browser code here.",
     "eslint": "Linter. Flat config in eslint.config.mjs, shared in shape with the sibling repositories.",
     "eslint-import-resolver-typescript": "Lets import-x resolve TypeScript path/extension conventions — notably the .js specifiers that ESM TypeScript writes for .ts files.",
     "eslint-plugin-import-x": "Import hygiene: enforces the .js extension on relative imports, which Node's ESM resolver requires at runtime. Pulls in unrs-resolver, whose native build must be allowed in pnpm-workspace.yaml.",
@@ -83,7 +83,7 @@
   },
   "//dependencies": [
     "One, and it is not a cryptographic one.",
-    "capping does no cryptography of its own: key generation, certificates, digests,",
+    "wacz-signer does no cryptography of its own: key generation, certificates, digests,",
     "signatures and RFC 3161 are all openssl invocations, and this package supplies",
     "the JSON, the temp files and the process handling around them. So the thing it",
     "really needs at run time is the openssl CLI, which comes from the system (or",

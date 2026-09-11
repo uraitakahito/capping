@@ -8,14 +8,14 @@ description: Producing a signedData, and the two details the spec does not state
 ```ts file="src/signed-data.ts#SignedData"
 ```
 
-capping implements the second of the spec's two formats — **Domain-Ownership Identity + Signed Timestamp** — because it is the one that says *who* signed. The identity is a domain, and the certificate for it is checkable against the same trust anchors a browser uses.
+wacz-signer implements the second of the spec's two formats — **Domain-Ownership Identity + Signed Timestamp** — because it is the one that says *who* signed. The identity is a domain, and the certificate for it is checkable against the same trust anchors a browser uses.
 
 ## The steps
 
 ```ts file="src/sign.ts#sign-steps"
 ```
 
-The timestamp is not capping's to make: it is asked for, from the RFC 3161 authority `--tsa-url` names. Building the request stays an openssl invocation — `ts -query` is a pure transformation that needs no key and no configuration — so what was dropped is only the part that answered it.
+The timestamp is not wacz-signer's to make: it is asked for, from the RFC 3161 authority `--tsa-url` names. Building the request stays an openssl invocation — `ts -query` is a pure transformation that needs no key and no configuration — so what was dropped is only the part that answered it.
 
 ```ts file="src/sign.ts#timestamp-request"
 ```
@@ -28,7 +28,7 @@ Both were found by taking the reference implementation's output apart rather tha
 
 The signed bytes are `sha256:fcf066f7…` — not the hex alone, and with no trailing newline. Sign the hex only and openssl fails in `digest_verify_final`. Add a newline (which `echo` does, and which most editors add on save) and the digest changes, so the signature verifies against nothing.
 
-This is why capping writes those bytes through a function that exists solely to promise it adds nothing:
+This is why wacz-signer writes those bytes through a function that exists solely to promise it adds nothing:
 
 > Signatures are computed over exactly these bytes. A stray `\n` — which `echo` would add, and which most editors add on save — changes the digest and produces a signature that verifies against nothing.
 
@@ -59,7 +59,7 @@ It can. So no `-token_in`, on either side.
 ## Signing on one machine, capturing on another
 
 ```console
-$ capping serve --dir ./id --port 8080 --token "$CAPPING_TOKEN"
+$ wacz-signer serve --dir ./id --port 8080 --token "$WACZ_SIGNER_TOKEN"
 ```
 
 `POST /sign` takes `{"hash": "sha256:…"}` and returns the `signedData`. `POST /verify` takes either a `signedData` or a whole `datapackage-digest.json` and returns the four-stage report.

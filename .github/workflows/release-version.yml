@@ -3,7 +3,7 @@ name: release-version
 # The version has drifted from the tag twice. The first time three copies of the
 # string disagreed; that was fixed by collapsing them into src/version.ts. It
 # happened again anyway — v0.6.0, v0.6.1 and v0.6.2 all signed as
-# `capping/0.5.1` — because one hand-edited constant is still hand-edited.
+# `wacz-signer/0.5.1` — because one hand-edited constant is still hand-edited.
 #
 # test/cli.test.ts already pins `--version` == package.json == SOFTWARE. What
 # nothing checked was whether any of them match the release. This does.
@@ -12,7 +12,7 @@ name: release-version
 # package.json. The title is the only place the intended version exists before
 # the tag is cut: the tag lands on the merge commit, which is after the last
 # moment anything can be stopped. Checking against the tag would report the
-# mistake once it is already permanent — capping writes this string into the
+# mistake once it is already permanent — wacz-signer writes this string into the
 # `software` field of every signature, and archives keep it.
 
 on:
