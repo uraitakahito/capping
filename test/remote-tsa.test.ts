@@ -1,12 +1,12 @@
 /**
  * Timestamps come from somewhere else now.
  *
- * capping used to answer its own timestamp requests, which made a `signedData`
+ * signer used to answer its own timestamp requests, which made a `signedData`
  * self-contained but put a stand-in where RFC 3161 wants an authority: the
  * serial restarted at 01 for every signature, and the spec says serials MUST be
  * unique per TSA. Delegating means the tokens are somebody's job.
  *
- * The TSA here is a real one — `openssl ts -reply`, the same invocation capping
+ * The TSA here is a real one — `openssl ts -reply`, the same invocation signer
  * used to make inline — behind an HTTP server the test controls. A stub that
  * returned canned bytes would let a `sign()` that never called out pass every
  * test in this file.
@@ -40,7 +40,7 @@ interface FakeTsa {
  * An authority that answers with `openssl ts -reply`, over its own identity.
  *
  * It issues from a root of its own so the tests can tell a token that came from
- * here apart from one capping made for itself: the two would otherwise verify
+ * here apart from one signer made for itself: the two would otherwise verify
  * against the same anchor and prove nothing about who produced them.
  */
 const startFakeTsa = async (dir: string): Promise<FakeTsa> => {
@@ -138,9 +138,9 @@ let identity: Identity;
 let tsa: FakeTsa;
 
 beforeAll(async () => {
-  dir = await mkdtemp(join(tmpdir(), "capping-tsa-test-"));
+  dir = await mkdtemp(join(tmpdir(), "wacz-signer-tsa-test-"));
   identity = await initIdentity({ dir: join(dir, "id"), domain: "sign.dev.local" });
-  tsa = await startFakeTsa(await mkdtemp(join(tmpdir(), "capping-fake-tsa-")));
+  tsa = await startFakeTsa(await mkdtemp(join(tmpdir(), "wacz-signer-fake-tsa-")));
 }, 180_000);
 
 afterAll(async () => {
@@ -160,7 +160,7 @@ describe("signing against an external TSA", () => {
 
   it("asks the authority to timestamp the base64 text of the signature", async () => {
     // The one detail that makes a token verify somewhere else. Rebuilding the
-    // query here from the signature capping produced, and comparing the bytes
+    // query here from the signature signer produced, and comparing the bytes
     // the TSA was actually handed, pins it to the signature rather than to
     // whatever `sign()` happened to hash.
     const signedData = await sign(identity, { hash: HASH, tsaUrl: tsa.url });

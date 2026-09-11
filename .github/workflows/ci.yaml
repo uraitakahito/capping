@@ -25,7 +25,7 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
-      # capping does no cryptography of its own, so openssl decides every
+      # wacz-signer does no cryptography of its own, so openssl decides every
       # result here. Its version is the one thing that can change the answers
       # without a commit, which makes it the first thing to check when a test
       # starts failing for no visible reason. Recorded before anything runs.

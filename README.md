@@ -1,4 +1,4 @@
-# capping
+# wacz-signer
 
 A local stand-in for a [wacz-auth](https://specs.webrecorder.net/wacz-auth/0.1.0/)
 signing service: it issues its own CA and signing certificate, asks an RFC 3161
@@ -14,8 +14,8 @@ exact commands used, so any result can be reproduced by hand.
 Everything — quickstart, the four verification stages, signing, and
 development — lives on the docs site:
 
-- **English** — <https://uraitakahito.github.io/capping/>
-- **日本語** — <https://uraitakahito.github.io/capping/ja/>
+- **English** — <https://uraitakahito.github.io/wacz-signer/>
+- **日本語** — <https://uraitakahito.github.io/wacz-signer/ja/>
 
 `NOTICE` covers the provenance and licence of the two signed fixtures under
 `test/fixtures/`, which come from

@@ -8,14 +8,14 @@ description: signedData の作り方と、仕様書に書かれていない 2 �
 ```ts file="src/signed-data.ts#SignedData"
 ```
 
-capping は仕様の 2 形式のうち後者、**Domain-Ownership Identity + Signed Timestamp** を実装します。**誰が**署名したかを述べるのがこちらだからです。身元はドメインであり、そのための証明書はブラウザが使うのと同じ信頼アンカーで確かめられます。
+wacz-signer は仕様の 2 形式のうち後者、**Domain-Ownership Identity + Signed Timestamp** を実装します。**誰が**署名したかを述べるのがこちらだからです。身元はドメインであり、そのための証明書はブラウザが使うのと同じ信頼アンカーで確かめられます。
 
 ## 手順
 
 ```ts file="src/sign.ts#sign-steps"
 ```
 
-タイムスタンプは capping が作るのではなく、`--tsa-url` が指す RFC 3161 認証局に求めます。要求の組み立ては openssl のままです —— `ts -query` は鍵も設定も要らない純粋な変換なので、捨てたのは**応答を自作していた部分だけ**です。
+タイムスタンプは wacz-signer が作るのではなく、`--tsa-url` が指す RFC 3161 認証局に求めます。要求の組み立ては openssl のままです —— `ts -query` は鍵も設定も要らない純粋な変換なので、捨てたのは**応答を自作していた部分だけ**です。
 
 ```ts file="src/sign.ts#timestamp-request"
 ```
@@ -28,7 +28,7 @@ capping は仕様の 2 形式のうち後者、**Domain-Ownership Identity + Sig
 
 署名されるバイト列は `sha256:fcf066f7…` です。hex だけではなく、末尾に改行もありません。hex だけに署名すると openssl は `digest_verify_final` で落ちます。改行を足すと（`echo` は足しますし、多くのエディタは保存時に足します）ダイジェストが変わり、何に対しても検証できない署名になります。
 
-だから capping は、「何も足さない」ことだけを約束する関数を経由してこのバイト列を書きます。
+だから wacz-signer は、「何も足さない」ことだけを約束する関数を経由してこのバイト列を書きます。
 
 > 署名はまさにこのバイト列に対して計算される。`echo` が足すような、そして多くのエディタが保存時に足すような `\n` が 1 個紛れ込むだけでダイジェストが変わり、何に対しても検証できない署名ができる。
 
@@ -59,7 +59,7 @@ Time stamp: Aug  1 13:59:39 2026 GMT
 ## 署名する機械とキャプチャする機械を分ける
 
 ```console
-$ capping serve --dir ./id --port 8080 --token "$CAPPING_TOKEN"
+$ wacz-signer serve --dir ./id --port 8080 --token "$WACZ_SIGNER_TOKEN"
 ```
 
 `POST /sign` は `{"hash": "sha256:…"}` を受け取り `signedData` を返します。`POST /verify` は `signedData` でも `datapackage-digest.json` 全体でも受け取り、4 段階の報告を返します。

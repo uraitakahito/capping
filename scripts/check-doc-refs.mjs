@@ -11,7 +11,7 @@
  *   2. `src/….ts` code-span paths   → the referenced file still exists on disk
  *
  * BrowserHive's version of this script also validates `/terminology/#g-<Term>`
- * links against `@glossary` tags. capping has no glossary page, so that check
+ * links against `@glossary` tags. signer has no glossary page, so that check
  * would have nothing to validate — and a check with zero subjects is worse than
  * no check, because it is permanently green and reads as coverage.
  *

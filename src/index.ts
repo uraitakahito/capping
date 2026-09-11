@@ -1,5 +1,5 @@
 /**
- * capping — a local stand-in for a wacz-auth signing service.
+ * signer — a local stand-in for a wacz-auth signing service.
  *
  * Issues its own CA and signing certificate, asks an external RFC 3161
  * authority for the timestamp, and produces the `signedData` that goes in a
@@ -18,7 +18,7 @@ export { Openssl, OpensslError, withTempDir, writeExact } from "./openssl.js";
 export type { OpensslOptions, RunResult } from "./openssl.js";
 
 export { initIdentity, identityPaths, loadIdentity } from "./ca.js";
-export type { CappingPaths, Identity, InitOptions } from "./ca.js";
+export type { SignerPaths, Identity, InitOptions } from "./ca.js";
 
 export {
   hashFile,

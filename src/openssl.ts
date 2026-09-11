@@ -1,7 +1,7 @@
 /**
  * Every openssl invocation in this package goes through here.
  *
- * capping does no cryptography of its own: it shells out for key generation,
+ * signer does no cryptography of its own: it shells out for key generation,
  * certificates, digests, signatures and RFC 3161, and confines itself to JSON,
  * temp files and process handling. That choice is only worth anything if the
  * commands stay inspectable, so this module records the argv of every call and
@@ -99,7 +99,7 @@ export class Openssl {
  * to put them. Keeping that here means no caller has to remember to clean up.
  */
 export async function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
-  const dir = await mkdtemp(join(tmpdir(), "capping-"));
+  const dir = await mkdtemp(join(tmpdir(), "wacz-signer-"));
   try {
     return await fn(dir);
   } finally {

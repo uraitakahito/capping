@@ -1,7 +1,7 @@
 /**
  * The `signedData` object of wacz-auth 0.1.0, and the file that carries it.
  *
- * Two signature formats exist in the spec. capping implements the second —
+ * Two signature formats exist in the spec. signer implements the second —
  * Domain-Ownership Identity + Signed Timestamp — because it is the one that
  * says who signed: the identity is a domain, and the certificate for it is
  * checkable against the same trust anchors a browser uses.

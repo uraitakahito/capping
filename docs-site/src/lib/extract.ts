@@ -1,16 +1,16 @@
 /**
  * The one place documentation pulls facts out of the source.
  *
- * capping needs a single extractor — `// #region` snippets, so a page can show
+ * signer needs a single extractor — `// #region` snippets, so a page can show
  * real code rather than a copy that quietly drifts. That matters more here than
- * in a normal package: the pages document which openssl arguments capping
+ * in a normal package: the pages document which openssl arguments signer
  * passes, and a page that showed a stale argument list would be describing a
  * different program.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-// The capping root. `docs-site` sits directly under it, and every script
+// The signer root. `docs-site` sits directly under it, and every script
 // (astro dev/build, node) runs with `docs-site` as its cwd — so the parent is
 // the repo. `import.meta.url` is not usable here: the astro build bundles this
 // file and the URL becomes a path inside `dist`.
@@ -29,7 +29,7 @@ const ROOT = resolve(process.cwd(), "..");
  *          `[ERROR] [starlight-docs-loader] Error rendering …`, and the build
  *          finishes with exit 0 and "Complete!".
  *
- * Every page in capping is .md, so here the build is not a guard at all. The
+ * Every page in signer is .md, so here the build is not a guard at all. The
  * one that holds the line is scripts/check-doc-refs.mjs, which exits non-zero
  * for both kinds. `npm run site:check` runs both; CI runs `site:check`, never
  * `site:build` alone, for exactly this reason.

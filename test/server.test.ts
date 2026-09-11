@@ -27,7 +27,7 @@ let server: Server;
 let base: string;
 
 beforeAll(async () => {
-  dir = await mkdtemp(join(tmpdir(), "capping-server-"));
+  dir = await mkdtemp(join(tmpdir(), "wacz-signer-server-"));
   identity = await initIdentity({ dir: join(dir, "id"), domain: "sign.dev.local" });
 
   // Port 0 lets the OS pick, so a stray process on a fixed port cannot make

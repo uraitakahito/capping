@@ -5,7 +5,7 @@
  * certificate that expired yesterday, or one for a domain nobody owns, and a
  * public timestamp authority will not report a time of its caller's choosing —
  * which makes the failure cases impossible to exercise against them. Those
- * cases are the ones worth testing, so capping issues its own.
+ * cases are the ones worth testing, so signer issues its own.
  *
  * Let's Encrypt's staging environment is not an alternative: its roots are
  * absent from every trust store on purpose, so signatures made under it fail
@@ -47,14 +47,14 @@ export interface Identity {
  *
  * `resolve` rather than `join`, because openssl runs with the identity
  * directory as its cwd. A relative `dir` would then be applied twice —
- * `capping init --dir ./id` looked for `./id/./id/ca.key` and failed with
+ * `wacz-signer init --dir ./id` looked for `./id/./id/ca.key` and failed with
  * openssl's own "Can't open ... for writing", which reads like a permissions
  * problem rather than a path one.
  */
 /**
  * Every file says what it is in its own name.
  *
- * An identity capping issues is a throwaway: the CA reaches no trust store, the
+ * An identity signer issues is a throwaway: the CA reaches no trust store, the
  * keys sign nothing anyone trusts, and the whole directory is meant to be
  * committed, mounted read-only and shared. A file called `insecure-dev-signer.key` does not
  * say any of that — it looks exactly like the one file you must never let out,
@@ -75,7 +75,7 @@ const paths = (dir: string) => ({
   signerExt: resolve(dir, `${PREFIX}signer.ext`),
 });
 
-export type CappingPaths = ReturnType<typeof paths>;
+export type SignerPaths = ReturnType<typeof paths>;
 export const identityPaths = paths;
 
 export async function initIdentity(options: InitOptions): Promise<Identity> {
@@ -93,7 +93,7 @@ export async function initIdentity(options: InitOptions): Promise<Identity> {
   await openssl.run(
     "req", "-x509", "-newkey", "rsa:2048", "-nodes",
     "-keyout", p.caKey, "-out", p.caCert,
-    "-days", String(caDays), "-subj", "/CN=capping-dev-ca",
+    "-days", String(caDays), "-subj", "/CN=wacz-signer-dev-ca",
   );
 
   // Signing key: ECDSA P-256, matching what the reference implementation uses.
