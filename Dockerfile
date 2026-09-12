@@ -9,7 +9,11 @@
 
 FROM node:26-bookworm-slim AS build
 WORKDIR /app
-RUN corepack enable
+# node:26 no longer ships corepack — it was unbundled from Node in 25, so the
+# image has neither corepack nor pnpm and a bare `corepack enable` dies with
+# "corepack: not found". Install it, pinned, then enable: corepack is what reads
+# `packageManager` from package.json, so the pnpm version stays declared once.
+RUN npm i -g corepack@0.35.0 && corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY tsconfig.json tsconfig.build.json ./
@@ -32,7 +36,7 @@ RUN pnpm run build
 # that the runtime stage will not have.
 FROM node:26-bookworm-slim AS deps
 WORKDIR /deps
-RUN corepack enable
+RUN npm i -g corepack@0.35.0 && corepack enable  # same reason as above
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --prod --frozen-lockfile --node-linker=hoisted
 
