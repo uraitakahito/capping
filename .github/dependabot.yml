@@ -32,7 +32,7 @@ updates:
       # typescript-eslint がまだ TS 7 に対応していない —— 最新の 8.69.0 でも peer は
       # `typescript: >=4.8.4 <6.1.0`。上げると lint が
       #   Error: typescript-eslint does not support TS 7.0.
-      # で **必ず** 落ちる。変更の中身とは無関係に。meadow #72 が実際にそうなった。
+      # で **必ず** 落ちる。変更の中身とは無関係に。capture-fixtures #72 が実際にそうなった。
       #
       # **対応版が出たらこの entry を消すこと。** 確認は:
       #   npm view typescript-eslint@latest peerDependencies.typescript

@@ -17,6 +17,6 @@ allowBuilds:
 # wacz-signer には現時点で pre/post script が 1 つも無いので、この設定は今日は
 # 何も変えない。それでも書いてあるのは、これが移行だからで —— 将来 prebuild
 # などを足したときに「npm では走っていたものが pnpm では黙って走らない」という
-# 差分を持ち込まないため。meadow は実際に prebuild / pretypecheck / pretest /
+# 差分を持ち込まないため。capture-fixtures は実際に prebuild / pretypecheck / pretest /
 # prelint を持っており、同じ形になったときに事故る。
 enablePrePostScripts: true
