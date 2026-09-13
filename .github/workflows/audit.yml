@@ -42,7 +42,7 @@ jobs:
       # `pnpm run` whenever node_modules is missing or stale (verifyDepsBeforeRun
       # defaults to `install`), so without it this job would download every
       # package first — measured on 2026-09-13 in capture-scheduler and
-      # browserhive, where the audit job fetched 457 and 480 packages. It also
+      # browserhive, where the audit job installed 457 and 480 packages. It also
       # keeps the verdict about the lockfile as committed: an out-of-date
       # lockfile is ci.yaml's frozen install to reject, not this job's to
       # re-resolve.
