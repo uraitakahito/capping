@@ -5,7 +5,7 @@ description: How the test suite is ordered, and why the ordering is the point.
 
 ```console
 $ pnpm install
-$ pnpm run check   # typecheck, lint, test
+$ pnpm run check   # audit, typecheck, lint, test
 ```
 
 Node 24, pnpm, and `openssl` on `PATH`. `package.json` lists one runtime dependency, commander, for parsing the command line; everything else in it is a dev dependency. Nothing cryptographic comes from npm, so openssl on `PATH` is the requirement that actually matters.

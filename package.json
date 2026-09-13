@@ -36,7 +36,8 @@
     "site:build": "Build docs-site/ to docs-site/dist/. NOT a drift guard on its own — see site:check.",
     "site:preview": "Serve the built docs-site/dist/ locally.",
     "site:check": "site:build plus scripts/check-doc-refs.mjs. Use this, not site:build, when you want the guarantee: a missing `// #region` only fails the build on .mdx pages, and every page here is .md, where Starlight's loader catches the error and still exits 0. check-doc-refs.mjs is the part that exits non-zero. CI runs this.",
-    "check": "typecheck + lint + test. What CI runs, and what to run before pushing."
+    "audit": "Known-vulnerability gate for both lockfiles: pnpm-lock.yaml (pnpm audit) and docs-site/package-lock.json (npm audit — pnpm audit never reads it). --audit-level=low, so the only passing count is zero. Needs no install: both commands read the lockfiles. CI runs it from .github/workflows/audit.yml on pull requests, pushes, daily and on demand. On 2026-09-13 vitest carried a moderate advisory and the docs-site lockfile four more (astro's critical one among them) while Dependabot alerts sat open and nothing was red. Fix by advancing the lockfile (pnpm update <pkg> --recursive --depth Infinity, npm audit fix), not with an override that leaves it where it is. Only an advisory with no fixed release may be skipped with --ignore <GHSA>, next to a note saying why and when to remove it.",
+    "check": "audit + typecheck + lint + test: what to run before pushing. CI runs the same pieces, but audit lives in its own workflow (audit.yml) because advisories are published between pull requests, so it also runs daily."
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -49,7 +50,8 @@
     "site:build": "npm --prefix docs-site run build",
     "site:preview": "npm --prefix docs-site run preview",
     "site:check": "pnpm run site:build && node scripts/check-doc-refs.mjs",
-    "check": "pnpm run typecheck && pnpm run lint && pnpm test"
+    "audit": "pnpm audit --audit-level=low && npm audit --prefix docs-site --audit-level=low",
+    "check": "pnpm run audit && pnpm run typecheck && pnpm run lint && pnpm test"
   },
   "keywords": [
     "wacz",
@@ -79,7 +81,7 @@
     "eslint-plugin-import-x": "^4.16.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.67.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "//dependencies": [
     "One, and it is not a cryptographic one.",
