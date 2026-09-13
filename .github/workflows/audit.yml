@@ -1,0 +1,52 @@
+name: audit
+
+# Known-vulnerability gate for both lockfiles: pnpm-lock.yaml (the package)
+# and docs-site/package-lock.json (npm — `pnpm audit` never reads it). The
+# command is package.json's `audit`, which is also the first step of `check`.
+#
+# Advisories are published independently of our pull requests, so this also
+# runs every day. On 2026-09-13 vitest carried a moderate advisory and the
+# docs-site lockfile four more, astro's critical one among them: Dependabot
+# alerts were open, fix PRs sat unmerged, and nothing anywhere was red.
+#
+# `schedule` and `workflow_dispatch` only run workflows that exist on the
+# default branch (main). Until this file is released to main, only
+# pull_request and push apply.
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+  schedule:
+    - cron: '17 21 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Known vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      # No install: both audits read the lockfiles, not node_modules. The env
+      # line is what makes that true. pnpm 11 installs dependencies before any
+      # `pnpm run` whenever node_modules is missing or stale (verifyDepsBeforeRun
+      # defaults to `install`), so without it this job would download every
+      # package first — measured on 2026-09-13 in capture-scheduler and
+      # browserhive, where the audit job installed 457 and 480 packages. It also
+      # keeps the verdict about the lockfile as committed: an out-of-date
+      # lockfile is ci.yaml's frozen install to reject, not this job's to
+      # re-resolve.
+      - name: Audit both lockfiles
+        run: pnpm run audit
+        env:
+          pnpm_config_verify_deps_before_run: 'false'

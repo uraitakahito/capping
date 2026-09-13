@@ -5,7 +5,7 @@ description: テストの順序と、その順序こそが要点である理由�
 
 ```console
 $ pnpm install
-$ pnpm run check   # typecheck・lint・test
+$ pnpm run check   # audit・typecheck・lint・test
 ```
 
 必要なのは Node 24・pnpm・`PATH` 上の `openssl` です。`package.json` の実行時依存はコマンドライン解析の commander 1 つで、ほかはすべて devDependencies です。暗号処理を npm から持ってくることはないので、実際に効いてくる要件は `PATH` 上の openssl です。
